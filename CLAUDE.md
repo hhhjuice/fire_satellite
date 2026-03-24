@@ -43,7 +43,7 @@ Ruff 配置：Python 3.11，行长 120，规则 E/F/W/I（忽略 E501）。
 ## 置信度模型
 
 ```text
-logit(P_final) = logit(P₀) + ln(LR_landcover) + β_env·env_score + brightness_bonus + frp_bonus − total_fp_penalty
+logit(P_final) = logit(P₀) + ln(LR_landcover) + β_env·env_score − total_fp_penalty
 P_final = sigmoid(logit_score)
 ```
 
@@ -58,8 +58,6 @@ P_final = sigmoid(logit_score)
 | `SAT_THRESHOLD_TRUE_FIRE` | 0.75 | 判决阈值（真实火点） |
 | `SAT_THRESHOLD_FALSE_POSITIVE` | 0.35 | 判决阈值（假阳性） |
 | `SAT_BETA_ENV` | 0.2 | 环境分数权重 |
-| `SAT_BRIGHTNESS_BONUS` | 0.3 | 亮温 ≥ 340 K 时启用 |
-| `SAT_FRP_BONUS` | 0.3 | FRP ≥ 20 MW 时启用 |
 | `SAT_CORRECTION_RADIUS_M` | 500 | 螺旋搜索半径（米） |
 | `SAT_CORRECTION_STEP_M` | 50 | 螺旋搜索步长（米） |
 | `SAT_WORLDCOVER_DIR` | `data/worldcover` | GeoTIFF 瓦片目录 |

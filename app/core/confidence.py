@@ -1,11 +1,9 @@
 """Confidence fusion engine for satellite system.
 
 Formula:
-    logit(P_final) = logit(P_0) + ln(LR_landcover) + β_env × env_score
-                     + brightness_bonus + frp_bonus - total_penalty
+    logit(P_final) = logit(P_0) + ln(LR_landcover) + β_env × env_score - total_penalty
 
 No historical component — that's ground-only.
-Adds brightness_bonus (+0.3 if >340K) and frp_bonus (+0.3 if >20MW).
 """
 import logging
 import math
@@ -40,8 +38,6 @@ def compute_confidence(
     false_positive: Optional[FalsePositiveResult] = None,
     environmental: Optional[EnvironmentalResult] = None,
     initial_confidence: Optional[float] = None,
-    brightness: Optional[float] = None,
-    frp: Optional[float] = None,
 ) -> tuple[float, ConfidenceBreakdown]:
     """Compute satellite confidence score using Bayesian logit fusion.
 
@@ -50,8 +46,6 @@ def compute_confidence(
         false_positive: False positive detection result (provides penalty)
         environmental: Environmental factors (provides score in [-0.5, 0.5])
         initial_confidence: Override initial confidence (default from settings)
-        brightness: Brightness temperature in Kelvin (satellite sensor data)
-        frp: Fire radiative power in MW (satellite sensor data)
 
     Returns:
         Tuple of (final_confidence, breakdown)
@@ -75,18 +69,6 @@ def compute_confidence(
         environmental_contribution = settings.beta_env * environmental.env_score
     logit_score += environmental_contribution
 
-    # Brightness bonus (satellite-specific)
-    brightness_bonus_val = 0.0
-    if brightness is not None and brightness > settings.brightness_bonus_threshold:
-        brightness_bonus_val = settings.brightness_bonus
-    logit_score += brightness_bonus_val
-
-    # FRP bonus (satellite-specific)
-    frp_bonus_val = 0.0
-    if frp is not None and frp > settings.frp_bonus_threshold:
-        frp_bonus_val = settings.frp_bonus
-    logit_score += frp_bonus_val
-
     # False positive penalty
     fp_penalty = 0.0
     if false_positive is not None:
@@ -100,8 +82,6 @@ def compute_confidence(
         initial_confidence=p0,
         landcover_contribution=round(landcover_contribution, 4),
         environmental_contribution=round(environmental_contribution, 4),
-        brightness_bonus=round(brightness_bonus_val, 4),
-        frp_bonus=round(frp_bonus_val, 4),
         false_positive_penalty=round(fp_penalty, 4),
         final_confidence=final_confidence,
     )

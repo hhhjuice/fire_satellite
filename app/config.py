@@ -17,12 +17,6 @@ class Settings(BaseSettings):
     # Confidence weights
     beta_env: float = 0.2
 
-    # Brightness / FRP bonus (satellite-specific)
-    brightness_bonus_threshold: float = 340.0  # Kelvin
-    brightness_bonus: float = 0.3
-    frp_bonus_threshold: float = 20.0  # MW
-    frp_bonus: float = 0.3
-
     # Land cover likelihood ratios (ESA WorldCover class -> LR)
     # 10=Tree, 20=Shrubland, 30=Grassland, 40=Cropland, 50=Built-up,
     # 60=Bare/sparse, 70=Snow/Ice, 80=Water, 90=Herbaceous wetland,

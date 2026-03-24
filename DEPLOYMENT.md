@@ -257,16 +257,6 @@ SAT_INITIAL_CONFIDENCE=0.5
 # 环境评分（日夜、季节等）在 logit 空间的贡献权重
 SAT_BETA_ENV=0.2
 
-# ── 亮温加分（Brightness Bonus）──────────────────────────
-# 亮温高于此阈值（K）时，置信度增加 SAT_BRIGHTNESS_BONUS
-SAT_BRIGHTNESS_BONUS_THRESHOLD=340.0
-SAT_BRIGHTNESS_BONUS=0.3
-
-# ── FRP 加分（Fire Radiative Power Bonus）────────────────
-# 火辐射功率高于此阈值（MW）时，置信度增加 SAT_FRP_BONUS
-SAT_FRP_BONUS_THRESHOLD=20.0
-SAT_FRP_BONUS=0.3
-
 # ── 坐标修正参数 ───────────────────────────────────────────
 # 螺旋搜索最大半径（米）
 SAT_CORRECTION_RADIUS_M=500.0
@@ -366,9 +356,6 @@ curl -X POST http://localhost:8000/api/validate \
       {
         "latitude": 30.114329,
         "longitude": 120.017562,
-        "satellite": "VIIRS",
-        "brightness": 345.2,
-        "frp": 25.8,
         "confidence": 80,
         "acquisition_time": "2026-03-11T12:50:00Z"
       }
@@ -391,24 +378,21 @@ curl -X POST http://localhost:8000/api/validate \
   -H "Content-Type: application/json" \
   -d '{
     "points": [
-      {"latitude": 30.114329, "longitude": 120.017562, "brightness": 350, "frp": 30},
-      {"latitude": 30.192207, "longitude": 120.136157, "brightness": 310, "frp": 5},
-      {"latitude": 30.189506, "longitude": 120.195067, "brightness": 290, "frp": 2}
+      {"latitude": 30.114329, "longitude": 120.017562, "confidence": 80},
+      {"latitude": 30.192207, "longitude": 120.136157, "confidence": 60},
+      {"latitude": 30.189506, "longitude": 120.195067}
     ]
   }'
 ```
 
 **请求字段说明：**
 
-| 字段                 | 类型   | 必填 | 范围         | 说明                                   |
-| -------------------- | ------ | ---- | ------------ | -------------------------------------- |
-| `latitude`         | float  | ✅   | -90 ~ 90     | 纬度，正北为正                         |
-| `longitude`        | float  | ✅   | -180 ~ 180   | 经度，正东为正                         |
-| `satellite`        | string | 否   | —           | 卫星来源，如 `VIIRS`、`MODIS`      |
-| `brightness`       | float  | 否   | —           | 亮温（K），>340K 触发 +0.3 加分        |
-| `frp`              | float  | 否   | ≥0          | 火辐射功率（MW），>20MW 触发 +0.3 加分 |
-| `confidence`       | float  | 否   | 0 ~ 100      | 传感器原始置信度，作为初始先验 P₀     |
-| `acquisition_time` | string | 否   | ISO 8601 UTC | 观测时间，影响日夜状态和太阳角计算     |
+| 字段 | 类型 | 必填 | 范围 | 说明 |
+| --- | --- | --- | --- | --- |
+| `latitude` | float | ✅ | -90 ~ 90 | 纬度，正北为正 |
+| `longitude` | float | ✅ | -180 ~ 180 | 经度，正东为正 |
+| `confidence` | float | 否 | 0 ~ 100 | 传感器原始置信度，作为初始先验 P₀ |
+| `acquisition_time` | string | 否 | ISO 8601 UTC | 观测时间，影响日夜状态和太阳角计算 |
 
 **响应字段说明：**
 
@@ -457,8 +441,6 @@ curl -X POST http://localhost:8000/api/validate \
         "initial_confidence": 0.5,        // 初始置信度
         "landcover_contribution": 1.0986, // ln(LR_landcover)
         "environmental_contribution": 0.03,
-        "brightness_bonus": 0.3,          // 亮温加分
-        "frp_bonus": 0.3,                 // FRP 加分
         "false_positive_penalty": 0.0,
         "final_confidence": 0.84
       },
@@ -522,21 +504,17 @@ curl http://localhost:8000/api/health
 logit(P_final) = logit(P₀)
                + ln(LR_landcover)
                + β_env × env_score
-               + brightness_bonus
-               + frp_bonus
                - total_fp_penalty
 ```
 
 各项含义：
 
-| 项                      | 公式                      | 说明                                          |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| `logit(P₀)`          | `ln(P₀ / (1-P₀))`     | 初始先验（传感器 confidence/100，或默认 0.5） |
-| `ln(LR_landcover)`    | 见地物表                  | 林地+0.92，草地+1.10，水体-4.61               |
-| `β_env × env_score` | β=0.2，score∈[-0.5,0.5] | 白天夏季加分，夜间冬季减分                    |
-| `brightness_bonus`    | +0.3 if >340K             | 高亮温表明高温燃烧                            |
-| `frp_bonus`           | +0.3 if >20MW             | 高辐射功率表明大规模火灾                      |
-| `total_fp_penalty`    | 各触发检测器惩罚之和      | 水体-3.0，城市-1.5，海岸-1.2，耀斑-1.0        |
+| 项 | 公式 | 说明 |
+| --- | --- | --- |
+| `logit(P₀)` | `ln(P₀ / (1-P₀))` | 初始先验（传感器 confidence/100，或默认 0.5） |
+| `ln(LR_landcover)` | 见地物表 | 林地+0.92，草地+1.10，水体-4.61 |
+| `β_env × env_score` | β=0.2，score∈[-0.5,0.5] | 白天夏季加分，夜间冬季减分 |
+| `total_fp_penalty` | 各触发检测器惩罚之和 | 水体-3.0，城市-1.5，海岸-1.2，耀斑-1.0 |
 
 最终通过 sigmoid 函数将 logit 分数映射回 0–1：
 
@@ -644,7 +622,7 @@ uvicorn app.main:app ... 2>&1 | tee -a /var/log/fire-satellite.log
 ```bash
 cd fire_satellite
 python -m pytest tests/ -v
-# 期望：34 passed
+# 期望：28 passed
 ```
 
 ### 性能基准

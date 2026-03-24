@@ -43,24 +43,6 @@ def test_generate_reasons_with_no_data_returns_empty() -> None:
     assert reasons == []
 
 
-def test_generate_reasons_brightness_bonus() -> None:
-    reasons = generate_reasons(
-        verdict=Verdict.TRUE_FIRE,
-        confidence=0.85,
-        brightness=360.0,
-    )
-    assert any("亮温" in r for r in reasons)
-
-
-def test_generate_reasons_frp_bonus() -> None:
-    reasons = generate_reasons(
-        verdict=Verdict.TRUE_FIRE,
-        confidence=0.85,
-        frp=30.0,
-    )
-    assert any("火辐射功率" in r or "FRP" in r for r in reasons)
-
-
 def test_generate_summary_contains_verdict_and_confidence(grassland_result) -> None:
     summary = generate_summary(
         verdict=Verdict.TRUE_FIRE,

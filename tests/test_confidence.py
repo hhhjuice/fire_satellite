@@ -36,40 +36,6 @@ def test_false_positive_penalty_decreases_confidence(grassland_result, water_fla
     assert penalized_confidence < base_confidence
 
 
-def test_brightness_bonus_increases_confidence(grassland_result) -> None:
-    """High brightness temperature adds bonus to logit score."""
-    base_confidence, base_bd = compute_confidence(landcover=grassland_result)
-    bright_confidence, bright_bd = compute_confidence(
-        landcover=grassland_result,
-        brightness=350.0,
-    )
-    assert bright_confidence > base_confidence
-    assert bright_bd.brightness_bonus > 0
-
-
-def test_frp_bonus_increases_confidence(grassland_result) -> None:
-    """High FRP adds bonus to logit score."""
-    base_confidence, _ = compute_confidence(landcover=grassland_result)
-    frp_confidence, frp_bd = compute_confidence(
-        landcover=grassland_result,
-        frp=25.0,
-    )
-    assert frp_confidence > base_confidence
-    assert frp_bd.frp_bonus > 0
-
-
-def test_low_brightness_no_bonus(grassland_result) -> None:
-    """Brightness below threshold gives no bonus."""
-    _, bd = compute_confidence(landcover=grassland_result, brightness=300.0)
-    assert bd.brightness_bonus == 0.0
-
-
-def test_low_frp_no_bonus(grassland_result) -> None:
-    """FRP below threshold gives no bonus."""
-    _, bd = compute_confidence(landcover=grassland_result, frp=10.0)
-    assert bd.frp_bonus == 0.0
-
-
 def test_environmental_score_influences_confidence() -> None:
     low_env = EnvironmentalResult(
         is_daytime=False,

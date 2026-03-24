@@ -39,7 +39,7 @@ async def validate_single_point(point: FirePointInput) -> SatelliteValidationRes
     Execution order:
     1. Parallel phase: land cover + environmental (both independent)
     2. Sequential phase: false positive (needs landcover code), coordinate correction (needs landcover code)
-    3. Fusion phase: confidence computation (with brightness/FRP bonus) + verdict + reasons
+    3. Fusion phase: confidence computation + verdict + reasons
     """
     start_time = time.monotonic()
     lat, lon = point.latitude, point.longitude
@@ -100,8 +100,6 @@ async def validate_single_point(point: FirePointInput) -> SatelliteValidationRes
         false_positive=fp_result,
         environmental=environmental_result,
         initial_confidence=initial_conf,
-        brightness=point.brightness,
-        frp=point.frp,
     )
 
     verdict = determine_verdict(final_confidence)
@@ -113,8 +111,6 @@ async def validate_single_point(point: FirePointInput) -> SatelliteValidationRes
         false_positive=fp_result,
         environmental=environmental_result,
         coordinate_correction=correction_result,
-        brightness=point.brightness,
-        frp=point.frp,
     )
 
     summary = generate_summary(

@@ -1,11 +1,10 @@
 """Generate human-readable Chinese verdict reasons and summary — satellite context.
 
-No historical fire references (ground-only). Includes brightness/FRP bonus reasons.
+No historical fire references (ground-only).
 """
 from typing import Optional
 
 from app.api.schemas import (
-    ConfidenceBreakdown,
     CoordinateCorrection,
     EnvironmentalResult,
     FalsePositiveResult,
@@ -21,8 +20,6 @@ def generate_reasons(
     false_positive: Optional[FalsePositiveResult] = None,
     environmental: Optional[EnvironmentalResult] = None,
     coordinate_correction: Optional[CoordinateCorrection] = None,
-    brightness: Optional[float] = None,
-    frp: Optional[float] = None,
 ) -> list[str]:
     """Generate list of Chinese reason strings explaining the satellite verdict."""
     reasons: list[str] = []
@@ -50,14 +47,6 @@ def generate_reasons(
     # Environmental reason
     if environmental is not None:
         reasons.append(environmental.detail)
-
-    # Brightness bonus reason
-    if brightness is not None and brightness > 340.0:
-        reasons.append(f"亮温{brightness:.1f}K，高亮温增强火点置信度")
-
-    # FRP bonus reason
-    if frp is not None and frp > 20.0:
-        reasons.append(f"火辐射功率{frp:.1f}MW，高FRP增强火点置信度")
 
     # Coordinate correction reason
     if coordinate_correction is not None and coordinate_correction.correction_applied:

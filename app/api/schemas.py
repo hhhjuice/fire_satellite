@@ -26,9 +26,6 @@ class FirePointInput(BaseModel):
     """Single fire point input from satellite sensor. No TIF fields."""
     latitude: float = Field(..., ge=-90, le=90, description="纬度")
     longitude: float = Field(..., ge=-180, le=180, description="经度")
-    satellite: Optional[str] = Field(None, description="卫星来源 (e.g. MODIS, VIIRS)")
-    brightness: Optional[float] = Field(None, description="亮温值 (K)")
-    frp: Optional[float] = Field(None, ge=0, description="火辐射功率 (MW)")
     confidence: Optional[float] = Field(None, ge=0, le=100, description="卫星原始置信度 (0-100)")
     acquisition_time: Optional[datetime] = Field(None, description="观测时间 (UTC)")
 
@@ -90,8 +87,6 @@ class ConfidenceBreakdown(BaseModel):
     initial_confidence: float = Field(0.5, description="初始置信度")
     landcover_contribution: float = Field(0.0, description="地物类型贡献")
     environmental_contribution: float = Field(0.0, description="环境因素贡献")
-    brightness_bonus: float = Field(0.0, description="亮温加成")
-    frp_bonus: float = Field(0.0, description="FRP加成")
     false_positive_penalty: float = Field(0.0, description="假阳性惩罚")
     final_confidence: float = Field(0.0, ge=0, le=1, description="最终置信度")
 
