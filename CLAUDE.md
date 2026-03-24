@@ -1,111 +1,113 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文件为 Claude Code（claude.ai/code）在此代码仓库中工作时提供指导。
 
-## Overview
+## 概述
 
-Satellite onboard fire point validation service — stateless, offline, GIS-based. Runs on port 8000. No database, no network calls; all inference uses local ESA WorldCover GeoTIFF tiles.
+卫星载荷火点验证服务——无状态、离线、基于 GIS。运行于端口 8000。无数据库、无网络调用，所有推断均使用本地 ESA WorldCover GeoTIFF 瓦片。
 
-## Commands
+## 常用命令
 
-Run from `fire_satellite/`:
+在 `fire_satellite/` 目录下运行：
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 python -m pytest tests/ -v
-python -m pytest tests/test_confidence.py -v   # single file
+python -m pytest tests/test_confidence.py -v   # 单个测试文件
 
 ruff check app/ tests/
 ruff format app/ tests/
 ```
 
-Ruff: Python 3.11 target, line length 120, rules E/F/W/I (E501 ignored).
+Ruff 配置：Python 3.11，行长 120，规则 E/F/W/I（忽略 E501）。
 
-## Pipeline Architecture
+## 流水线架构
 
-**3-phase async pipeline** in `core/pipeline.py` using `asyncio.gather(return_exceptions=True)`:
+`core/pipeline.py` 中使用 `asyncio.gather(return_exceptions=True)` 实现的**三阶段异步流水线**：
 
+```text
+第一阶段（并行）：
+  services/landcover.py          → 读取本地 GeoTIFF 的地表覆盖类型
+  services/environmental.py      → 纯数学计算太阳角度 + 季节
+
+第二阶段（并行，在第一阶段之后）：
+  services/false_positive.py     → 4 个检测器：水体、城市、太阳耀光、海岸
+  core/coordinator.py            → 螺旋搜索可燃地表（最多 50 步）
+
+第三阶段（融合）：
+  core/confidence.py             → 贝叶斯 logit 融合 → 判决结果
+  utils/reason_generator.py      → 生成中文原因说明 + 摘要
 ```
-Phase 1 (parallel):
-  services/landcover.py          → rasterio read of local GeoTIFF
-  services/environmental.py      → pure-math solar angle + season
 
-Phase 2 (parallel, after Phase 1):
-  services/false_positive.py     → 4 detectors: water, urban, sun_glint, coastal
-  core/coordinator.py            → spiral search for combustible landcover (max 50 steps)
+## 置信度模型
 
-Phase 3 (fusion):
-  core/confidence.py             → Bayesian logit fusion → verdict
-  utils/reason_generator.py      → Chinese-language reasons + summary
-```
-
-## Confidence Model
-
-```
+```text
 logit(P_final) = logit(P₀) + ln(LR_landcover) + β_env·env_score + brightness_bonus + frp_bonus − total_fp_penalty
 P_final = sigmoid(logit_score)
 ```
 
-- Input sensor confidence (0–100) is converted to `P₀ = confidence / 100.0` before entering logit space.
-- Verdicts: `≥ 0.75 → TRUE_FIRE`, `< 0.35 → FALSE_POSITIVE`, else `UNCERTAIN`.
-- All thresholds and weights live in `app/config.py` (env prefix `SAT_`).
+- 传感器输入置信度（0–100）在进入 logit 空间前转换为 `P₀ = confidence / 100.0`。
+- 判决规则：`≥ 0.75 → TRUE_FIRE`，`< 0.35 → FALSE_POSITIVE`，否则 `UNCERTAIN`。
+- 所有阈值和权重在 `app/config.py` 中定义（环境变量前缀 `SAT_`）。
 
-**Key defaults** (override via `.env`):
+**关键默认值**（可通过 `.env` 覆盖）：
 
-| Variable | Default | Effect |
-|---|---|---|
-| `SAT_THRESHOLD_TRUE_FIRE` | 0.75 | Verdict cutoff |
-| `SAT_THRESHOLD_FALSE_POSITIVE` | 0.35 | Verdict cutoff |
-| `SAT_BETA_ENV` | 0.2 | Environmental score weight |
-| `SAT_BRIGHTNESS_BONUS` | 0.3 | Applied if brightness ≥ 340 K |
-| `SAT_FRP_BONUS` | 0.3 | Applied if FRP ≥ 20 MW |
-| `SAT_CORRECTION_RADIUS_M` | 500 | Spiral search radius |
-| `SAT_CORRECTION_STEP_M` | 50 | Spiral search step |
-| `SAT_WORLDCOVER_DIR` | `data/worldcover` | GeoTIFF tile directory |
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `SAT_THRESHOLD_TRUE_FIRE` | 0.75 | 判决阈值（真实火点） |
+| `SAT_THRESHOLD_FALSE_POSITIVE` | 0.35 | 判决阈值（假阳性） |
+| `SAT_BETA_ENV` | 0.2 | 环境分数权重 |
+| `SAT_BRIGHTNESS_BONUS` | 0.3 | 亮温 ≥ 340 K 时启用 |
+| `SAT_FRP_BONUS` | 0.3 | FRP ≥ 20 MW 时启用 |
+| `SAT_CORRECTION_RADIUS_M` | 500 | 螺旋搜索半径（米） |
+| `SAT_CORRECTION_STEP_M` | 50 | 螺旋搜索步长（米） |
+| `SAT_WORLDCOVER_DIR` | `data/worldcover` | GeoTIFF 瓦片目录 |
 
-## Land Cover
+## 地表覆盖
 
-**ESA WorldCover class codes and likelihood ratios** (defined in `app/config.py`):
+**ESA WorldCover 分类代码及似然比**（定义于 `app/config.py`）：
 
-| Code | Class | LR |
-|---|---|---|
-| 10 | Tree cover | 2.5 |
-| 20 | Shrubland | 2.8 |
-| 30 | Grassland | 3.0 |
-| 40 | Cropland | 1.8 |
-| 50 | Built-up | 0.2 |
-| 60 | Bare/sparse | 0.05 |
-| 70 | Snow/ice | 0.01 |
-| 80 | Water | 0.01 |
-| 90 | Herbaceous wetland | 1.5 |
-| 95 | Mangrove | 1.2 |
-| 100 | Lichen/moss | 1.0 |
+| 代码 | 类别 | 似然比 |
+| --- | --- | --- |
+| 10 | 树木覆盖 | 2.5 |
+| 20 | 灌木地 | 2.8 |
+| 30 | 草地 | 3.0 |
+| 40 | 耕地 | 1.8 |
+| 50 | 建成区 | 0.2 |
+| 60 | 裸地/稀疏植被 | 0.05 |
+| 70 | 雪/冰 | 0.01 |
+| 80 | 水体 | 0.01 |
+| 90 | 草本湿地 | 1.5 |
+| 95 | 红树林 | 1.2 |
+| 100 | 地衣/苔藓 | 1.0 |
 
-**Combustible codes** (used by coordinate corrector): `{10, 20, 30, 40, 90, 95, 100}`
+**可燃地表代码**（坐标校正器使用）：`{10, 20, 30, 40, 90, 95, 100}`
 
-## GeoTIFF Tile Convention
+## GeoTIFF 瓦片规范
 
-Tiles are 3°×3° ESA WorldCover grid cells. File naming:
-```
+瓦片为 3°×3° ESA WorldCover 网格单元，命名格式：
+
+```text
 ESA_WorldCover_10m_2021_v200_{grid_code}_Map.tif
 ```
-Grid code examples: `N27E114`, `S03W060`. Resolution: 10 m/pixel.
 
-Place tiles in `data/worldcover/` (or set `SAT_WORLDCOVER_DIR`). Missing tiles are gracefully handled — landcover returns `None` and computation continues with neutral LR.
+网格代码示例：`N27E114`、`S03W060`。分辨率：10 米/像素。
 
-## False Positive Detectors
+将瓦片放置于 `data/worldcover/`（或通过 `SAT_WORLDCOVER_DIR` 指定路径）。缺失瓦片会被优雅处理——地表覆盖返回 `None`，计算以中性似然比继续进行。
 
-| Detector | Trigger | Penalty |
-|---|---|---|
-| Water body | landcover == 80 | 3.0 |
-| Urban heat | landcover == 50 | 1.5 |
-| Coastal reflection | landcover in {90, 95} | 1.2 |
-| Sun glint | solar zenith ∈ [60°, 85°] | 1.0 |
+## 假阳性检测器
 
-## API
+| 检测器 | 触发条件 | 惩罚值 |
+| --- | --- | --- |
+| 水体 | landcover == 80 | 3.0 |
+| 城市热岛 | landcover == 50 | 1.5 |
+| 海岸反射 | landcover in {90, 95} | 1.2 |
+| 太阳耀光 | 太阳天顶角 ∈ [60°, 85°] | 1.0 |
 
-- `POST /api/validate` — accepts `ValidateRequest` (list of `FirePointInput`), returns `ValidateResponse` with per-point `SatelliteValidationResult` and batch statistics.
-- `GET /api/health` — returns status and version.
+## API 接口
 
-All reasons and summaries are generated in Chinese (`utils/reason_generator.py`).
+- `POST /api/validate` — 接受 `ValidateRequest`（`FirePointInput` 列表），返回包含每点 `SatelliteValidationResult` 及批量统计的 `ValidateResponse`。
+- `GET /api/health` — 返回服务状态和版本信息。
+
+所有原因说明和摘要均以中文生成（`utils/reason_generator.py`）。

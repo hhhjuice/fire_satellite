@@ -73,6 +73,8 @@ cp .env.example .env
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+> 详细部署步骤（GDAL 安装、systemd 配置、批量数据下载、故障排查等）参见 [DEPLOYMENT.md](DEPLOYMENT.md)。
+
 ## GIS 数据准备
 
 将 ESA WorldCover 2021 v200 GeoTIFF 瓦片放入 `data/worldcover/` 目录：
