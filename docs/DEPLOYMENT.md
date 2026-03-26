@@ -267,6 +267,10 @@ SAT_CORRECTION_STEP_M=50.0
 # ── GIS 数据路径 ───────────────────────────────────────────
 # WorldCover GeoTIFF 存储目录（绝对路径或相对于项目根目录的路径）
 SAT_WORLDCOVER_DIR=data/worldcover
+
+# ── 相机参数 ───────────────────────────────────────────────
+# 像元分辨率（米/像素），用于由 fire_pixel 计算火点面积
+SAT_PIXEL_RESOLUTION_M=50.0
 ```
 
 ### 5.3 环境变量优先级
@@ -393,6 +397,7 @@ curl -X POST http://localhost:8000/api/validate \
 | `longitude` | float | ✅ | -180 ~ 180 | 经度，正东为正 |
 | `confidence` | float | 否 | 0 ~ 100 | 传感器原始置信度，作为初始先验 P₀ |
 | `acquisition_time` | string | 否 | ISO 8601 UTC | 观测时间，影响日夜状态和太阳角计算 |
+| `fire_pixel` | int | 否 | ≥ 1 | 火点像素大小（像素数），用于计算火点面积 |
 
 **响应字段说明：**
 
@@ -403,6 +408,7 @@ curl -X POST http://localhost:8000/api/validate \
       "input_point": { ... },              // 原始输入参数
       "verdict": "TRUE_FIRE",              // 判定结果
       "final_confidence": 84.0,            // 最终置信度（0~100）
+      "fire_area_m2": 30000.0,             // 火点估算面积（m²），fire_pixel 为 null 时此字段也为 null
       "reasons": [ "..." ],               // 中文判定原因列表
       "summary": "星上主判结果为...",      // 综合摘要
       "coordinate_correction": {
@@ -623,7 +629,7 @@ uvicorn app.main:app ... 2>&1 | tee -a /var/log/fire-satellite.log
 ```bash
 cd fire_satellite
 python -m pytest tests/ -v
-# 期望：28 passed
+# 期望：44 passed
 ```
 
 ### 性能基准

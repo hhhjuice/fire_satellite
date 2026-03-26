@@ -28,6 +28,7 @@ class FirePointInput(BaseModel):
     longitude: float = Field(..., ge=-180, le=180, description="经度")
     confidence: Optional[float] = Field(None, ge=0, le=100, description="卫星原始置信度 (0-100)")
     acquisition_time: Optional[datetime] = Field(None, description="观测时间 (UTC)")
+    fire_pixel: Optional[int] = Field(None, ge=1, description="火点像素大小（像素数）")
 
 
 class ValidateRequest(BaseModel):
@@ -105,6 +106,7 @@ class SatelliteValidationResult(BaseModel):
 
     verdict: Verdict = Field(..., description="判定结果")
     final_confidence: float = Field(..., ge=0, le=100, description="最终置信度 (0-100)")
+    fire_area_m2: Optional[float] = Field(None, ge=0, description="火点估算面积 (m²)")
     reasons: list[str] = Field(default_factory=list, description="判断原因列表")
     summary: str = Field("", description="综合判断摘要")
 

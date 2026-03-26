@@ -77,6 +77,7 @@ P_final = sigmoid(logit(P_final)) × 100
 | `SAT_CORRECTION_RADIUS_M` | 500 | 螺旋搜索半径（米） |
 | `SAT_CORRECTION_STEP_M` | 50 | 螺旋搜索步长（米） |
 | `SAT_WORLDCOVER_DIR` | `data/worldcover` | GeoTIFF 瓦片目录 |
+| `SAT_PIXEL_RESOLUTION_M` | 50.0 | 相机像元分辨率（米/像素） |
 | `SAT_FIRMS_LR_EXACT_MATCH` | 4.0 | FIRMS 同位置同季节似然比 |
 | `SAT_FIRMS_LR_NO_HISTORY` | 0.5 | FIRMS 无历史记录似然比 |
 | `SAT_INDUSTRIAL_DELTA_WITHIN_500M` | -2.5 | 工业设施 500m 内 logit 修正 |
@@ -124,7 +125,7 @@ ESA_WorldCover_10m_2021_v200_{grid_code}_Map.tif
 
 ## API 接口
 
-- `POST /api/validate` — 接受 `ValidateRequest`（`FirePointInput` 列表），返回包含每点 `SatelliteValidationResult` 及批量统计的 `ValidateResponse`。
+- `POST /api/validate` — 接受 `ValidateRequest`（`FirePointInput` 列表），返回包含每点 `SatelliteValidationResult` 及批量统计的 `ValidateResponse`。`FirePointInput` 含可选字段 `fire_pixel`（像素数，≥1）；`SatelliteValidationResult` 含 `fire_area_m2`（火点估算面积 m²，公式：`fire_pixel × pixel_resolution_m²`，未传入时为 `null`）。
 - `GET /api/health` — 返回服务状态和版本信息。
 
 所有原因说明和摘要均以中文生成（`utils/reason_generator.py`）。

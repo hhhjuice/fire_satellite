@@ -14,15 +14,12 @@ import time
 from typing import Optional
 
 from app.api.schemas import (
-    CoordinateCorrection,
-    EnvironmentalResult,
-    FalsePositiveResult,
     FirePointInput,
-    LandCoverResult,
     SatelliteValidationResult,
     ValidateResponse,
     Verdict,
 )
+from app.config import get_settings
 from app.core.confidence import compute_confidence, determine_verdict
 from app.core.coordinator import correct_coordinates
 from app.services.environmental import get_environmental_factors
@@ -120,12 +117,18 @@ async def validate_single_point(point: FirePointInput) -> SatelliteValidationRes
         false_positive=fp_result,
     )
 
+    settings = get_settings()
+    fire_area_m2: Optional[float] = None
+    if point.fire_pixel is not None:
+        fire_area_m2 = point.fire_pixel * (settings.pixel_resolution_m ** 2)
+
     elapsed_ms = (time.monotonic() - start_time) * 1000
 
     return SatelliteValidationResult(
         input_point=point,
         verdict=verdict,
         final_confidence=final_confidence,
+        fire_area_m2=fire_area_m2,
         reasons=reasons,
         summary=summary,
         coordinate_correction=correction_result,

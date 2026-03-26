@@ -103,7 +103,8 @@ data/worldcover/
       "latitude": 28.5,
       "longitude": 116.3,
       "confidence": 80,
-      "acquisition_time": "2026-03-08T06:00:00Z"
+      "acquisition_time": "2026-03-08T06:00:00Z",
+      "fire_pixel": 12
     }
   ]
 }
@@ -118,6 +119,7 @@ data/worldcover/
       "input_point": { "latitude": 28.5, "longitude": 116.3 },
       "verdict": "TRUE_FIRE",
       "final_confidence": 82.0,
+      "fire_area_m2": 30000.0,
       "reasons": [
         "地物类型为草地，属于高火灾风险区域",
         "未检测到假阳性特征"
@@ -195,6 +197,7 @@ fire_satellite/
 | SAT_CORRECTION_RADIUS_M | 坐标修正半径 (m) | 500.0 |
 | SAT_CORRECTION_STEP_M | 坐标修正步长 (m) | 50.0 |
 | SAT_WORLDCOVER_DIR | GeoTIFF 目录 | data/worldcover |
+| SAT_PIXEL_RESOLUTION_M | 相机像元分辨率 (m/像素) | 50.0 |
 
 ## 测试
 
@@ -202,7 +205,7 @@ fire_satellite/
 python -m pytest tests/ -v
 ```
 
-28 个测试覆盖：置信度引擎、地理计算、原因生成、数据模型验证。
+44 个测试覆盖：置信度引擎、地理计算、原因生成、数据模型验证。
 
 ## 与地面系统对接
 

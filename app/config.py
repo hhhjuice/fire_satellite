@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     data_dir: Path = Path("data")
     worldcover_dir: Path = Path("data/worldcover")
 
+    # Camera pixel resolution (meters per pixel, for fire area calculation)
+    pixel_resolution_m: float = 50.0
+
     # Coordinate correction
     correction_radius_m: float = 500.0
     correction_step_m: float = 50.0
