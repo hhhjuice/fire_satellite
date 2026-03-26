@@ -40,27 +40,46 @@ Ruff 配置：Python 3.11，行长 120，规则 E/F/W/I（忽略 E501）。
   utils/reason_generator.py      → 生成中文原因说明 + 摘要
 ```
 
-## 置信度模型
+## 置信度模型（两阶段）
+
+火点置信度经由两阶段修正流水线产生最终结果，详细策略见 `docs/confidence_strategy.md`。
+
+### Stage 1 — 星上验证（本项目）
 
 ```text
-logit(P_final) = logit(P₀) + ln(LR_landcover) + β_env·env_score − total_fp_penalty
-P_final = sigmoid(logit_score)
+logit(Pₛ) = logit(P₀) + ln(LR_landcover) + β_env·env_score − total_fp_penalty
+Pₛ = sigmoid(logit_score) × 100
 ```
 
-- 传感器输入置信度（0–100）在进入 logit 空间前转换为 `P₀ = confidence / 100.0`。
-- 判决规则：`≥ 0.75 → TRUE_FIRE`，`< 0.35 → FALSE_POSITIVE`，否则 `UNCERTAIN`。
-- 所有阈值和权重在 `app/config.py` 中定义（环境变量前缀 `SAT_`）。
+- 传感器输入置信度范围 **[50, 75]**，转换为 `P₀ = confidence / 100.0`。
+- 初步判决（`core/confidence.py`）：`≥ 70 → TRUE_FIRE`，`< 50 → FALSE_POSITIVE`，否则 `UNCERTAIN`。
+
+### Stage 2 — 地面验证（地面系统使用）
+
+```text
+logit(P_final) = logit(Pₛ/100) + ln(LR_firms) + Δ_industrial
+P_final = sigmoid(logit(P_final)) × 100
+```
+
+- 计算逻辑在 `core/ground_confidence.py`，数据获取由地面系统负责。
+- 最终判决阈值（`determine_final_verdict`）：`≥ 75 → TRUE_FIRE`，`< 50 → FALSE_POSITIVE`，否则 `UNCERTAIN`。
+- 最终置信度范围：真实火点 **[75, 100]**，不确定 **[50, 75)**，假阳性 **< 50**。
 
 **关键默认值**（可通过 `.env` 覆盖）：
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `SAT_THRESHOLD_TRUE_FIRE` | 0.75 | 判决阈值（真实火点） |
-| `SAT_THRESHOLD_FALSE_POSITIVE` | 0.35 | 判决阈值（假阳性） |
-| `SAT_BETA_ENV` | 0.2 | 环境分数权重 |
+| `SAT_THRESHOLD_TRUE_FIRE` | 70.0 | 星上初步阈值（真实火点） |
+| `SAT_THRESHOLD_FALSE_POSITIVE` | 50.0 | 星上初步阈值（假阳性） |
+| `SAT_THRESHOLD_TRUE_FIRE_FINAL` | 75.0 | 地面最终阈值（真实火点） |
+| `SAT_THRESHOLD_FALSE_POSITIVE_FINAL` | 50.0 | 地面最终阈值（假阳性） |
+| `SAT_BETA_ENV` | 0.5 | 环境分数权重 |
 | `SAT_CORRECTION_RADIUS_M` | 500 | 螺旋搜索半径（米） |
 | `SAT_CORRECTION_STEP_M` | 50 | 螺旋搜索步长（米） |
 | `SAT_WORLDCOVER_DIR` | `data/worldcover` | GeoTIFF 瓦片目录 |
+| `SAT_FIRMS_LR_EXACT_MATCH` | 4.0 | FIRMS 同位置同季节似然比 |
+| `SAT_FIRMS_LR_NO_HISTORY` | 0.5 | FIRMS 无历史记录似然比 |
+| `SAT_INDUSTRIAL_DELTA_WITHIN_500M` | -2.5 | 工业设施 500m 内 logit 修正 |
 
 ## 地表覆盖
 
@@ -68,10 +87,10 @@ P_final = sigmoid(logit_score)
 
 | 代码 | 类别 | 似然比 |
 | --- | --- | --- |
-| 10 | 树木覆盖 | 2.5 |
-| 20 | 灌木地 | 2.8 |
-| 30 | 草地 | 3.0 |
-| 40 | 耕地 | 1.8 |
+| 10 | 树木覆盖 | 3.0 |
+| 20 | 灌木地 | 3.5 |
+| 30 | 草地 | 4.0 |
+| 40 | 耕地 | 2.0 |
 | 50 | 建成区 | 0.2 |
 | 60 | 裸地/稀疏植被 | 0.05 |
 | 70 | 雪/冰 | 0.01 |

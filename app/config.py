@@ -9,20 +9,20 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Confidence thresholds
-    threshold_true_fire: float = 0.75
-    threshold_false_positive: float = 0.35
-    initial_confidence: float = 0.5
+    # Confidence thresholds (external scale 0-100)
+    threshold_true_fire: float = 70.0
+    threshold_false_positive: float = 50.0
+    initial_confidence: float = 0.5  # internal P₀ default [0,1]
 
     # Confidence weights
-    beta_env: float = 0.2
+    beta_env: float = 0.5
 
     # Land cover likelihood ratios (ESA WorldCover class -> LR)
     # 10=Tree, 20=Shrubland, 30=Grassland, 40=Cropland, 50=Built-up,
     # 60=Bare/sparse, 70=Snow/Ice, 80=Water, 90=Herbaceous wetland,
     # 95=Mangroves, 100=Moss/Lichen
     landcover_lr: dict[int, float] = {
-        10: 2.5, 20: 2.8, 30: 3.0, 40: 1.8, 50: 0.2,
+        10: 3.0, 20: 3.5, 30: 4.0, 40: 2.0, 50: 0.2,
         60: 0.05, 70: 0.01, 80: 0.01, 90: 1.5, 95: 1.2, 100: 1.0,
     }
 
@@ -38,6 +38,24 @@ class Settings(BaseSettings):
     fp_penalty_urban: float = 1.5
     fp_penalty_sun_glint: float = 1.0
     fp_penalty_coastal: float = 1.2
+
+    # Ground validation thresholds (final verdicts — used by ground system, 75/50)
+    threshold_true_fire_final: float = 75.0
+    threshold_false_positive_final: float = 50.0
+
+    # FIRMS historical fire data likelihood ratios (ground stage)
+    firms_lr_exact_match: float = 4.0          # Same 1km², same season (±1mo), ≤3yr
+    firms_lr_nearby_same_season: float = 2.5   # ≤5km, same season, ≤5yr
+    firms_lr_regional: float = 1.5             # ≤10km, any time
+    firms_lr_no_season_record: float = 0.8     # Fire season but no nearby record
+    firms_lr_no_history: float = 0.5           # No record within 50km
+    firms_lr_confirmed_none: float = 0.3       # Confirmed non-fire zone
+
+    # Industrial facility logit corrections (ground stage, negative = penalty)
+    industrial_delta_within_500m: float = -2.5
+    industrial_delta_within_2km: float = -1.5
+    industrial_delta_within_5km: float = -0.8
+    industrial_delta_none: float = 0.3         # No facility within 10km
 
     # Data directories (local GeoTIFF)
     data_dir: Path = Path("data")
