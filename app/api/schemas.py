@@ -158,7 +158,6 @@ class IndustrialProximity(str, Enum):
 class FirmsResult(BaseModel):
     """FIRMS historical fire data match result (ground stage input)."""
     match_level: FirmsMatchLevel = Field(..., description="FIRMS 时空匹配等级")
-    likelihood_ratio: float = Field(..., gt=0, description="历史火点似然比")
     nearest_fire_km: Optional[float] = Field(None, ge=0, description="最近历史火点距离 (km)")
     nearest_fire_date: Optional[datetime] = Field(None, description="最近历史火点日期")
     detail: str = Field("", description="详情说明")
@@ -167,7 +166,6 @@ class FirmsResult(BaseModel):
 class IndustrialResult(BaseModel):
     """Industrial facility proximity detection result (ground stage input)."""
     proximity: IndustrialProximity = Field(..., description="最近工业设施距离等级")
-    delta_logit: float = Field(..., description="logit 空间修正量（负值为惩罚）")
     nearest_facility_m: Optional[float] = Field(None, ge=0, description="最近工业设施距离 (m)")
     facility_type: Optional[str] = Field(None, description="设施类型（电厂/钢铁厂/化工厂等）")
     is_gas_flare: bool = Field(False, description="是否为油气火炬（真实燃烧源，不施加惩罚）")

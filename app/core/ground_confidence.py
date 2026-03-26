@@ -17,26 +17,18 @@ import math
 from typing import Optional
 
 from app.api.schemas import (
+    FirmsMatchLevel,
     FirmsResult,
     GroundConfidenceBreakdown,
+    IndustrialProximity,
     IndustrialResult,
     Verdict,
 )
 from app.config import get_settings
+from app.core.confidence import _verdict_from_thresholds
+from app.utils.math import logit, sigmoid
 
 logger = logging.getLogger(__name__)
-
-
-def _logit(p: float) -> float:
-    """Log-odds of probability p. Clamps to avoid ±infinity."""
-    p = max(1e-9, min(1 - 1e-9, p))
-    return math.log(p / (1.0 - p))
-
-
-def _sigmoid(x: float) -> float:
-    """Sigmoid function. Clamps input to avoid overflow."""
-    x = max(-20.0, min(20.0, x))
-    return 1.0 / (1.0 + math.exp(-x))
 
 
 def compute_ground_confidence(
@@ -46,6 +38,10 @@ def compute_ground_confidence(
 ) -> tuple[float, GroundConfidenceBreakdown]:
     """Compute final confidence by applying ground-stage corrections.
 
+    LR values (FIRMS) and logit deltas (industrial) are looked up from
+    config based on the semantic enum level, so the caller only needs to
+    specify match_level / proximity — not raw numeric values.
+
     Args:
         satellite_confidence: Output of the satellite validation stage (0–100).
         firms: FIRMS historical fire data match result.
@@ -54,26 +50,41 @@ def compute_ground_confidence(
     Returns:
         Tuple of (final_confidence, breakdown).
     """
-    logit_score = _logit(satellite_confidence / 100.0)
+    settings = get_settings()
+    logit_score = logit(satellite_confidence / 100.0)
 
-    # FIRMS historical data contribution: ln(LR_firms)
+    firms_lr_map = {
+        FirmsMatchLevel.EXACT_MATCH: settings.firms_lr_exact_match,
+        FirmsMatchLevel.NEARBY_SAME_SEASON: settings.firms_lr_nearby_same_season,
+        FirmsMatchLevel.REGIONAL: settings.firms_lr_regional,
+        FirmsMatchLevel.NO_SEASON_RECORD: settings.firms_lr_no_season_record,
+        FirmsMatchLevel.NO_HISTORY: settings.firms_lr_no_history,
+        FirmsMatchLevel.CONFIRMED_NONE: settings.firms_lr_confirmed_none,
+    }
+    industrial_delta_map = {
+        IndustrialProximity.WITHIN_500M: settings.industrial_delta_within_500m,
+        IndustrialProximity.WITHIN_2KM: settings.industrial_delta_within_2km,
+        IndustrialProximity.WITHIN_5KM: settings.industrial_delta_within_5km,
+        IndustrialProximity.NONE: settings.industrial_delta_none,
+    }
+
     firms_contribution = 0.0
     if firms is not None:
-        firms_contribution = math.log(firms.likelihood_ratio)
+        lr = firms_lr_map[firms.match_level]
+        firms_contribution = math.log(lr)
         logger.debug("FIRMS contribution: %.4f (LR=%.2f, level=%s)",
-                     firms_contribution, firms.likelihood_ratio, firms.match_level)
+                     firms_contribution, lr, firms.match_level)
     logit_score += firms_contribution
 
-    # Industrial facility correction: Δ_industrial
-    # Gas flares are genuine combustion sources — skip the penalty.
+    # Gas flares are genuine combustion sources — skip the industrial penalty.
     industrial_contribution = 0.0
     if industrial is not None and not industrial.is_gas_flare:
-        industrial_contribution = industrial.delta_logit
+        industrial_contribution = industrial_delta_map[industrial.proximity]
         logger.debug("Industrial contribution: %.4f (proximity=%s)",
                      industrial_contribution, industrial.proximity)
     logit_score += industrial_contribution
 
-    final_confidence = round(_sigmoid(logit_score) * 100, 1)
+    final_confidence = round(sigmoid(logit_score) * 100, 1)
 
     breakdown = GroundConfidenceBreakdown(
         satellite_confidence=round(satellite_confidence, 1),
@@ -88,13 +99,10 @@ def compute_ground_confidence(
 def determine_final_verdict(confidence: float) -> Verdict:
     """Determine final verdict using ground-stage thresholds (75/50).
 
-    These thresholds are stricter than the satellite-only thresholds (70/50):
-    the combined satellite+ground evidence justifies a higher bar for TRUE_FIRE.
+    Stricter than satellite-only thresholds (70/50): the combined
+    satellite+ground evidence justifies a higher bar for TRUE_FIRE.
     """
     settings = get_settings()
-    if confidence >= settings.threshold_true_fire_final:
-        return Verdict.TRUE_FIRE
-    elif confidence < settings.threshold_false_positive_final:
-        return Verdict.FALSE_POSITIVE
-    else:
-        return Verdict.UNCERTAIN
+    return _verdict_from_thresholds(
+        confidence, settings.threshold_true_fire_final, settings.threshold_false_positive_final
+    )
