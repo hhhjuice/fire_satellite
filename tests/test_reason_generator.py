@@ -6,7 +6,7 @@ from app.utils.reason_generator import generate_reasons, generate_summary
 def test_generate_reasons_with_grassland_contains_expected_keywords(grassland_result) -> None:
     reasons = generate_reasons(
         verdict=Verdict.TRUE_FIRE,
-        confidence=0.82,
+        confidence=82.0,
         landcover=grassland_result,
     )
     joined = " ".join(reasons)
@@ -29,7 +29,7 @@ def test_generate_reasons_with_triggered_false_positive_contains_detail() -> Non
     )
     reasons = generate_reasons(
         verdict=Verdict.FALSE_POSITIVE,
-        confidence=0.03,
+        confidence=3.0,
         false_positive=fp,
     )
     assert any("水体" in reason for reason in reasons)
@@ -38,7 +38,7 @@ def test_generate_reasons_with_triggered_false_positive_contains_detail() -> Non
 def test_generate_reasons_with_no_data_returns_empty() -> None:
     reasons = generate_reasons(
         verdict=Verdict.UNCERTAIN,
-        confidence=0.5,
+        confidence=50.0,
     )
     assert reasons == []
 
@@ -46,7 +46,7 @@ def test_generate_reasons_with_no_data_returns_empty() -> None:
 def test_generate_summary_contains_verdict_and_confidence(grassland_result) -> None:
     summary = generate_summary(
         verdict=Verdict.TRUE_FIRE,
-        confidence=0.82,
+        confidence=82.0,
         landcover=grassland_result,
     )
     assert "判定为真实火点" in summary

@@ -10,20 +10,20 @@ from app.core.confidence import compute_confidence, determine_verdict
 
 def test_compute_confidence_defaults_to_baseline_uncertain() -> None:
     confidence, breakdown = compute_confidence()
-    assert confidence == pytest.approx(0.5, abs=1e-4)
-    assert breakdown.final_confidence == pytest.approx(0.5, abs=1e-4)
+    assert confidence == pytest.approx(50.0, abs=0.1)
+    assert breakdown.final_confidence == pytest.approx(50.0, abs=0.1)
     assert determine_verdict(confidence) == Verdict.UNCERTAIN
 
 
 def test_compute_confidence_grassland_increases_confidence(grassland_result) -> None:
     confidence, _ = compute_confidence(landcover=grassland_result)
-    assert confidence > 0.7
+    assert confidence > 70.0
     assert determine_verdict(confidence) in {Verdict.TRUE_FIRE, Verdict.UNCERTAIN}
 
 
 def test_compute_confidence_water_strongly_decreases_confidence(water_result) -> None:
     confidence, _ = compute_confidence(landcover=water_result)
-    assert confidence < 0.1
+    assert confidence < 10.0
     assert determine_verdict(confidence) == Verdict.FALSE_POSITIVE
 
 
@@ -67,13 +67,13 @@ def test_initial_confidence_override() -> None:
 @pytest.mark.parametrize(
     ("confidence", "expected"),
     [
-        (0.75, Verdict.TRUE_FIRE),
-        (0.90, Verdict.TRUE_FIRE),
-        (0.3499, Verdict.FALSE_POSITIVE),
-        (0.20, Verdict.FALSE_POSITIVE),
-        (0.35, Verdict.UNCERTAIN),
-        (0.50, Verdict.UNCERTAIN),
-        (0.74, Verdict.UNCERTAIN),
+        (70.0, Verdict.TRUE_FIRE),
+        (90.0, Verdict.TRUE_FIRE),
+        (49.9, Verdict.FALSE_POSITIVE),
+        (20.0, Verdict.FALSE_POSITIVE),
+        (50.0, Verdict.UNCERTAIN),
+        (60.0, Verdict.UNCERTAIN),
+        (69.9, Verdict.UNCERTAIN),
     ],
 )
 def test_determine_verdict_thresholds(confidence: float, expected: Verdict) -> None:

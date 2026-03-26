@@ -36,7 +36,7 @@ def test_satellite_validation_result_defaults() -> None:
     result = SatelliteValidationResult(
         input_point=FirePointInput(latitude=10.0, longitude=20.0),
         verdict=Verdict.UNCERTAIN,
-        final_confidence=0.5,
+        final_confidence=50.0,
     )
     assert result.reasons == []
     assert result.summary == ""

@@ -69,7 +69,7 @@ def generate_summary(
     }
 
     parts: list[str] = []
-    parts.append(f"星上分析{verdict_text.get(verdict, '未知')}，最终置信度{confidence:.1%}。")
+    parts.append(f"星上分析{verdict_text.get(verdict, '未知')}，最终置信度{confidence:.1f}%。")
 
     if landcover is not None:
         parts.append(f"该位置地物类型为{landcover.class_name}（火灾似然比{landcover.likelihood_ratio}）。")

@@ -44,15 +44,17 @@ logit(P) = logit(P_0) + ln(LR_landcover) + beta_env * env_score - total_penalty
 | 参数 | 说明 | 默认值 |
 | --- | --- | --- |
 | P_0 | 初始置信度 (传感器 confidence/100 或 0.5) | 0.5 |
-| LR_landcover | 地物火灾似然比 | 林地 2.5, 灌木 2.8, 草地 3.0, 农田 1.8, 建筑 0.2, 水体 0.01 |
-| beta_env | 环境因素权重 | 0.2 |
+| LR_landcover | 地物火灾似然比 | 林地 3.0, 灌木 3.5, 草地 4.0, 农田 2.0, 建筑 0.2, 水体 0.01 |
+| beta_env | 环境因素权重 | 0.5 |
 | total_penalty | 假阳性惩罚 | 水体 3.0, 城市 1.5, 耀斑 1.0, 海岸 1.2 |
+
+输出置信度范围为 **[0, 100]**（sigmoid 结果乘以 100）。
 
 **判定阈值：**
 
-- \>= 0.75 -> **TRUE_FIRE**
-- < 0.35 -> **FALSE_POSITIVE**
-- 0.35 ~ 0.75 -> **UNCERTAIN**
+- \>= 70 -> **TRUE_FIRE**
+- < 50 -> **FALSE_POSITIVE**
+- 50 ~ 70 -> **UNCERTAIN**
 
 ## 快速开始
 
@@ -115,22 +117,22 @@ data/worldcover/
     {
       "input_point": { "latitude": 28.5, "longitude": 116.3 },
       "verdict": "TRUE_FIRE",
-      "final_confidence": 0.82,
+      "final_confidence": 82.0,
       "reasons": [
         "地物类型为草地，属于高火灾风险区域",
         "未检测到假阳性特征"
       ],
       "summary": "星上分析判定为真实火点，最终置信度82.0%。",
       "coordinate_correction": { "correction_applied": true, "offset_m": 120.5 },
-      "landcover": { "class_code": 30, "class_name": "草地", "likelihood_ratio": 3.0 },
+      "landcover": { "class_code": 30, "class_name": "草地", "likelihood_ratio": 4.0 },
       "false_positive": { "flags": [], "total_penalty": 0.0 },
       "environmental": { "is_daytime": true, "env_score": 0.15 },
       "confidence_breakdown": {
-        "initial_confidence": 0.5,
-        "landcover_contribution": 1.0986,
-        "environmental_contribution": 0.03,
+        "initial_confidence": 50.0,
+        "landcover_contribution": 1.3863,
+        "environmental_contribution": 0.075,
         "false_positive_penalty": 0.0,
-        "final_confidence": 0.82
+        "final_confidence": 82.0
       },
       "processing_time_ms": 45.2
     }
@@ -186,10 +188,10 @@ fire_satellite/
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| SAT_THRESHOLD_TRUE_FIRE | 真火点阈值 | 0.75 |
-| SAT_THRESHOLD_FALSE_POSITIVE | 假阳性阈值 | 0.35 |
+| SAT_THRESHOLD_TRUE_FIRE | 真火点阈值 | 70.0 |
+| SAT_THRESHOLD_FALSE_POSITIVE | 假阳性阈值 | 50.0 |
 | SAT_INITIAL_CONFIDENCE | 初始置信度 | 0.5 |
-| SAT_BETA_ENV | 环境因素权重 | 0.2 |
+| SAT_BETA_ENV | 环境因素权重 | 0.5 |
 | SAT_CORRECTION_RADIUS_M | 坐标修正半径 (m) | 500.0 |
 | SAT_CORRECTION_STEP_M | 坐标修正步长 (m) | 50.0 |
 | SAT_WORLDCOVER_DIR | GeoTIFF 目录 | data/worldcover |

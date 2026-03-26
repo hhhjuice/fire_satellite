@@ -23,7 +23,7 @@
 - **环境因素分析**：根据观测时间计算太阳天顶角、日夜状态、火灾季节系数
 - **假阳性检测**：4 种检测器（水体、城市热岛、太阳耀斑、海岸反射）
 - **坐标修正**：螺旋搜索将坐标修正至最近可燃区域
-- **置信度融合**：Bayesian Logit 算法融合所有分析结果，输出 0–1 置信度
+- **置信度融合**：Bayesian Logit 算法融合所有分析结果，输出 0–100 置信度
 - **三级判定**：`TRUE_FIRE` / `UNCERTAIN` / `FALSE_POSITIVE`
 
 系统为 **纯离线架构**，无任何网络依赖，输出结果可通过星地链路下传至地面增强系统。
@@ -245,17 +245,17 @@ cp .env.example .env
 ```ini
 # ── 判定阈值 ──────────────────────────────────────────────
 # 最终置信度 >= 此值 → TRUE_FIRE
-SAT_THRESHOLD_TRUE_FIRE=0.75
+SAT_THRESHOLD_TRUE_FIRE=70.0
 
 # 最终置信度 < 此值 → FALSE_POSITIVE
-SAT_THRESHOLD_FALSE_POSITIVE=0.35
+SAT_THRESHOLD_FALSE_POSITIVE=50.0
 
 # 初始先验置信度（当传感器未提供 confidence 字段时使用）
 SAT_INITIAL_CONFIDENCE=0.5
 
 # ── 环境因素权重 ───────────────────────────────────────────
 # 环境评分（日夜、季节等）在 logit 空间的贡献权重
-SAT_BETA_ENV=0.2
+SAT_BETA_ENV=0.5
 
 # ── 坐标修正参数 ───────────────────────────────────────────
 # 螺旋搜索最大半径（米）
@@ -275,7 +275,7 @@ SAT_WORLDCOVER_DIR=data/worldcover
 
 1. 代码中的默认值
 2. `.env` 文件
-3. 系统环境变量（`export SAT_THRESHOLD_TRUE_FIRE=0.8`）
+3. 系统环境变量（`export SAT_THRESHOLD_TRUE_FIRE=70.0`）
 
 ---
 
@@ -402,7 +402,7 @@ curl -X POST http://localhost:8000/api/validate \
     {
       "input_point": { ... },              // 原始输入参数
       "verdict": "TRUE_FIRE",              // 判定结果
-      "final_confidence": 0.84,            // 最终置信度（0~1）
+      "final_confidence": 84.0,            // 最终置信度（0~100）
       "reasons": [ "..." ],               // 中文判定原因列表
       "summary": "星上主判结果为...",      // 综合摘要
       "coordinate_correction": {
@@ -417,7 +417,7 @@ curl -X POST http://localhost:8000/api/validate \
       "landcover": {
         "class_code": 30,                 // ESA WorldCover 地物编码
         "class_name": "草地",
-        "likelihood_ratio": 3.0,          // 火灾似然比
+        "likelihood_ratio": 4.0,          // 火灾似然比
         "description": "ESA WorldCover 2021: 草地 (编码30)"
       },
       "false_positive": {
@@ -438,11 +438,11 @@ curl -X POST http://localhost:8000/api/validate \
         "detail": "白天观测，夏季北半球，火灾季节系数1.2"
       },
       "confidence_breakdown": {
-        "initial_confidence": 0.5,        // 初始置信度
-        "landcover_contribution": 1.0986, // ln(LR_landcover)
-        "environmental_contribution": 0.03,
+        "initial_confidence": 50.0,       // 初始置信度（0~100）
+        "landcover_contribution": 1.3863, // ln(LR_landcover)
+        "environmental_contribution": 0.075,
         "false_positive_penalty": 0.0,
-        "final_confidence": 0.84
+        "final_confidence": 84.0          // 最终置信度（0~100）
       },
       "processing_time_ms": 38.5
     }
@@ -459,10 +459,10 @@ curl -X POST http://localhost:8000/api/validate \
 
 | 编码 | 地物类型      | 火灾似然比 | 说明           |
 | ---- | ------------- | ---------- | -------------- |
-| 10   | 林地          | 2.5        | 高风险         |
-| 20   | 灌木地        | 2.8        | 高风险         |
-| 30   | 草地          | 3.0        | 最高风险       |
-| 40   | 农田          | 1.8        | 中等风险       |
+| 10   | 林地          | 3.0        | 高风险         |
+| 20   | 灌木地        | 3.5        | 高风险         |
+| 30   | 草地          | 4.0        | 最高风险       |
+| 40   | 农田          | 2.0        | 中等风险       |
 | 50   | 建筑用地      | 0.2        | 城市热岛假阳性 |
 | 60   | 裸地/稀疏植被 | 0.05       | 低风险         |
 | 70   | 冰雪          | 0.01       | 极低风险       |
@@ -512,22 +512,23 @@ logit(P_final) = logit(P₀)
 | 项 | 公式 | 说明 |
 | --- | --- | --- |
 | `logit(P₀)` | `ln(P₀ / (1-P₀))` | 初始先验（传感器 confidence/100，或默认 0.5） |
-| `ln(LR_landcover)` | 见地物表 | 林地+0.92，草地+1.10，水体-4.61 |
-| `β_env × env_score` | β=0.2，score∈[-0.5,0.5] | 白天夏季加分，夜间冬季减分 |
+| `ln(LR_landcover)` | 见地物表 | 林地+1.10，草地+1.39，水体-4.61 |
+| `β_env × env_score` | β=0.5，score∈[-0.5,0.5] | 白天夏季加分，夜间冬季减分 |
 | `total_fp_penalty` | 各触发检测器惩罚之和 | 水体-3.0，城市-1.5，海岸-1.2，耀斑-1.0 |
 
-最终通过 sigmoid 函数将 logit 分数映射回 0–1：
+最终通过 sigmoid 函数将 logit 分数映射回 [0, 100]：
 
 ```
-P_final = sigmoid(logit_score) = 1 / (1 + e^(-logit_score))
+confidence = sigmoid(logit_score) × 100
+           = 100 / (1 + e^(-logit_score))
 ```
 
 ### 判定阈值
 
 ```
-P_final >= 0.75  →  TRUE_FIRE      （真实火点）
-P_final <  0.35  →  FALSE_POSITIVE  （假阳性）
-0.35 <= P_final < 0.75  →  UNCERTAIN  （待确认）
+confidence >= 70  →  TRUE_FIRE      （真实火点）
+confidence <  50  →  FALSE_POSITIVE  （假阳性）
+50 <= confidence < 70  →  UNCERTAIN  （待确认）
 ```
 
 ---
@@ -590,13 +591,13 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001
 
 ---
 
-### 问题：所有火点返回 UNCERTAIN，置信度约 0.5
+### 问题：所有火点返回 UNCERTAIN，置信度约 50
 
-**原因：** 缺少 WorldCover 数据（landcover 为 null）且未传入 brightness/frp，导致只有初始先验生效。
+**原因：** 缺少 WorldCover 数据（landcover 为 null），导致只有初始先验生效，无地物似然比贡献。
 
-**排查：** 检查响应中 `confidence_breakdown` 各项是否全为 0，确认 `landcover` 是否为 null。
+**排查：** 检查响应中 `confidence_breakdown.landcover_contribution` 是否为 0，确认 `landcover` 是否为 null。
 
-**解决：** 补充 WorldCover 数据，或在请求中传入 `brightness` 和 `frp` 参数。
+**解决：** 补充对应区域的 WorldCover GeoTIFF 瓦片文件至 `data/worldcover/` 目录。
 
 ---
 
