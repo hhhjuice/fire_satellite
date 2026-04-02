@@ -41,12 +41,12 @@
 logit(P) = logit(P_0) + ln(LR_landcover) + beta_env * env_score - total_penalty
 ```
 
-| 参数 | 说明 | 默认值 |
-| --- | --- | --- |
-| P_0 | 初始置信度 (传感器 confidence/100 或 0.5) | 0.5 |
-| LR_landcover | 地物火灾似然比 | 林地 3.0, 灌木 3.5, 草地 4.0, 农田 2.0, 建筑 0.2, 水体 0.01 |
-| beta_env | 环境因素权重 | 0.5 |
-| total_penalty | 假阳性惩罚 | 水体 3.0, 城市 1.5, 耀斑 1.0, 海岸 1.2 |
+| 参数          | 说明                                      | 默认值                                                      |
+| ------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| P_0           | 初始置信度 (传感器 confidence/100 或 0.5) | 0.5                                                         |
+| LR_landcover  | 地物火灾似然比                            | 林地 3.0, 灌木 3.5, 草地 4.0, 农田 2.0, 建筑 0.2, 水体 0.01 |
+| beta_env      | 环境因素权重                              | 0.5                                                         |
+| total_penalty | 假阳性惩罚                                | 水体 3.0, 城市 1.5, 耀斑 1.0, 海岸 1.2                      |
 
 输出置信度范围为 **[0, 100]**（sigmoid 结果乘以 100）。
 
@@ -188,16 +188,16 @@ fire_satellite/
 
 所有配置通过环境变量设置，前缀 `SAT_`：
 
-| 变量 | 说明 | 默认值 |
-| --- | --- | --- |
-| SAT_THRESHOLD_TRUE_FIRE | 真火点阈值 | 70.0 |
-| SAT_THRESHOLD_FALSE_POSITIVE | 假阳性阈值 | 50.0 |
-| SAT_INITIAL_CONFIDENCE | 初始置信度 | 0.5 |
-| SAT_BETA_ENV | 环境因素权重 | 0.5 |
-| SAT_CORRECTION_RADIUS_M | 坐标修正半径 (m) | 500.0 |
-| SAT_CORRECTION_STEP_M | 坐标修正步长 (m) | 50.0 |
-| SAT_WORLDCOVER_DIR | GeoTIFF 目录 | data/worldcover |
-| SAT_PIXEL_RESOLUTION_M | 相机像元分辨率 (m/像素) | 50.0 |
+| 变量                         | 说明                    | 默认值          |
+| ---------------------------- | ----------------------- | --------------- |
+| SAT_THRESHOLD_TRUE_FIRE      | 真火点阈值              | 70.0            |
+| SAT_THRESHOLD_FALSE_POSITIVE | 假阳性阈值              | 50.0            |
+| SAT_INITIAL_CONFIDENCE       | 初始置信度              | 0.5             |
+| SAT_BETA_ENV                 | 环境因素权重            | 0.5             |
+| SAT_CORRECTION_RADIUS_M      | 坐标修正半径 (m)        | 500.0           |
+| SAT_CORRECTION_STEP_M        | 坐标修正步长 (m)        | 50.0            |
+| SAT_WORLDCOVER_DIR           | GeoTIFF 目录            | data/worldcover |
+| SAT_PIXEL_RESOLUTION_M       | 相机像元分辨率 (m/像素) | 50.0            |
 
 ## 测试
 
