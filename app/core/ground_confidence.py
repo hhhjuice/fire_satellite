@@ -55,11 +55,9 @@ def compute_ground_confidence(
 
     firms_lr_map = {
         FirmsMatchLevel.EXACT_MATCH: settings.firms_lr_exact_match,
-        FirmsMatchLevel.NEARBY_SAME_SEASON: settings.firms_lr_nearby_same_season,
+        FirmsMatchLevel.NEARBY: settings.firms_lr_nearby,
         FirmsMatchLevel.REGIONAL: settings.firms_lr_regional,
-        FirmsMatchLevel.NO_SEASON_RECORD: settings.firms_lr_no_season_record,
         FirmsMatchLevel.NO_HISTORY: settings.firms_lr_no_history,
-        FirmsMatchLevel.CONFIRMED_NONE: settings.firms_lr_confirmed_none,
     }
     industrial_delta_map = {
         IndustrialProximity.WITHIN_500M: settings.industrial_delta_within_500m,

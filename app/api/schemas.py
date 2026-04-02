@@ -140,13 +140,11 @@ class HealthResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class FirmsMatchLevel(str, Enum):
-    """FIRMS historical fire data spatial/temporal match level."""
-    EXACT_MATCH = "EXACT_MATCH"               # Same 1km², same season (±1mo), ≤3yr
-    NEARBY_SAME_SEASON = "NEARBY_SAME_SEASON"  # ≤5km, same season, ≤5yr
-    REGIONAL = "REGIONAL"                      # ≤10km, any time
-    NO_SEASON_RECORD = "NO_SEASON_RECORD"      # Fire season but no nearby record
-    NO_HISTORY = "NO_HISTORY"                  # No record within 50km
-    CONFIRMED_NONE = "CONFIRMED_NONE"          # Confirmed non-fire zone
+    """FIRMS NRT fire data spatial match level (5-day window)."""
+    EXACT_MATCH = "EXACT_MATCH"    # Within 1km in recent 5 days
+    NEARBY = "NEARBY"              # Within 5km in recent 5 days
+    REGIONAL = "REGIONAL"          # Within 10km in recent 5 days
+    NO_HISTORY = "NO_HISTORY"      # No record within 10km
 
 
 class IndustrialProximity(str, Enum):

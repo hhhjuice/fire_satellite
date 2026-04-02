@@ -103,7 +103,7 @@ def test_scenario_strong_true_fire() -> None:
 
 def test_scenario_industrial_false_positive() -> None:
     """Urban satellite output (~15%) + no FIRMS + plant <500m → FALSE_POSITIVE."""
-    firms = FirmsResult(match_level=FirmsMatchLevel.CONFIRMED_NONE)
+    firms = FirmsResult(match_level=FirmsMatchLevel.NO_HISTORY)
     industrial = IndustrialResult(proximity=IndustrialProximity.WITHIN_500M)
     final, _ = compute_ground_confidence(15.0, firms=firms, industrial=industrial)
     assert determine_final_verdict(final) == Verdict.FALSE_POSITIVE

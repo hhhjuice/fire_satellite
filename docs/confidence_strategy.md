@@ -107,20 +107,18 @@ logit(P_final) = logit(Pₛ/100) + ln(LR_firms) + Δ_industrial
 P_final = sigmoid(logit(P_final)) × 100
 ```
 
-### 2.1 FIRMS 历史火点修正（LR_firms）
+### 2.1 FIRMS 近期火点修正（LR_firms）
 
-按时空匹配程度确定似然比：
+使用 NASA FIRMS NRT 接口，查询近 **5 天**、**10km 范围**内的卫星热点记录，按距离分级：
 
 | 场景 | LR | Δlogit | 环境变量 |
 |------|----|--------|---------|
-| 同位置（1km²）3年内，同季节（±1月） | 4.0 | +1.39 | `SAT_FIRMS_LR_EXACT_MATCH` |
-| 5km内，同季节，5年内 | 2.5 | +0.92 | `SAT_FIRMS_LR_NEARBY_SAME_SEASON` |
-| 10km内，任意时间 | 1.5 | +0.41 | `SAT_FIRMS_LR_REGIONAL` |
-| 火灾高发季节，50km内无记录 | 0.8 | −0.22 | `SAT_FIRMS_LR_NO_SEASON_RECORD` |
-| 50km内无任何历史火点 | 0.5 | −0.69 | `SAT_FIRMS_LR_NO_HISTORY` |
-| 确认无火灾区域（常年沙漠/水体/冰雪） | 0.3 | −1.20 | `SAT_FIRMS_LR_CONFIRMED_NONE` |
+| 1km内有近期火点 | 4.0 | +1.39 | `SAT_FIRMS_LR_EXACT_MATCH` |
+| 5km内有近期火点 | 2.5 | +0.92 | `SAT_FIRMS_LR_NEARBY` |
+| 10km内有近期火点 | 1.5 | +0.41 | `SAT_FIRMS_LR_REGIONAL` |
+| 10km内无记录 | 0.5 | −0.69 | `SAT_FIRMS_LR_NO_HISTORY` |
 
-**季节匹配判断**：将历史记录日期与当前 `acquisition_time` 做月份对比，±1 个月视为同季节。
+> **数据源限制**：FIRMS NRT 仅提供近 5 天数据，不支持多年历史或季节匹配。
 
 ### 2.2 工业设施检测修正（Δ_industrial）
 

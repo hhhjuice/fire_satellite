@@ -44,12 +44,10 @@ class Settings(BaseSettings):
     threshold_false_positive_final: float = 50.0
 
     # FIRMS historical fire data likelihood ratios (ground stage)
-    firms_lr_exact_match: float = 4.0          # Same 1km², same season (±1mo), ≤3yr
-    firms_lr_nearby_same_season: float = 2.5   # ≤5km, same season, ≤5yr
-    firms_lr_regional: float = 1.5             # ≤10km, any time
-    firms_lr_no_season_record: float = 0.8     # Fire season but no nearby record
-    firms_lr_no_history: float = 0.5           # No record within 50km
-    firms_lr_confirmed_none: float = 0.3       # Confirmed non-fire zone
+    firms_lr_exact_match: float = 4.0          # Within 1km in recent 5 days
+    firms_lr_nearby: float = 2.5               # Within 5km in recent 5 days
+    firms_lr_regional: float = 1.5             # Within 10km in recent 5 days
+    firms_lr_no_history: float = 0.5           # No record within 10km
 
     # Industrial facility logit corrections (ground stage, negative = penalty)
     industrial_delta_within_500m: float = -2.5
