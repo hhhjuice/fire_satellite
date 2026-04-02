@@ -186,7 +186,7 @@ class GroundValidationResult(BaseModel):
     """Final ground-enhanced validation result for a single fire point.
 
     This is the authoritative output after both satellite and ground stages.
-    Verdict uses thresholds 75/50 (vs satellite-only 70/50).
+    Verdict uses thresholds 75/50 (same as satellite stage).
     """
     satellite_result: SatelliteValidationResult = Field(..., description="星上验证结果（输入）")
     verdict: Verdict = Field(..., description="最终判决（阈值 75/50）")

@@ -24,7 +24,7 @@
 │  logit(Pₛ) = logit(P₀) + ln(LR_lc)                      │
 │              + β·env_score − Σ fp_penalty                │
 │                                                          │
-│  初步判决阈值：≥70 → TRUE_FIRE，<50 → FALSE_POSITIVE       │
+│  初步判决阈值：≥75 → TRUE_FIRE，<50 → FALSE_POSITIVE       │
 └───────────────────────┬──────────────────────────────────┘
                         │ sigmoid × 100 → sat_confidence ∈ [0, 100]
                         ▼
@@ -91,10 +91,10 @@ Pₛ = sigmoid(logit(Pₛ)) × 100
 
 | 阈值 | 默认值 | 初步判决 |
 |------|--------|---------|
-| `SAT_THRESHOLD_TRUE_FIRE` | 70.0 | ≥70 → 疑似真实火点 |
+| `SAT_THRESHOLD_TRUE_FIRE` | 75.0 | ≥75 → 疑似真实火点 |
 | `SAT_THRESHOLD_FALSE_POSITIVE` | 50.0 | <50 → 疑似假阳性 |
 
-> 星上判决为**初步结论**，地面验证后将以 75/50 阈值覆盖为最终结论。
+> 星上与地面阶段使用相同阈值（75/50），保持两阶段判决标准一致。
 
 ---
 
@@ -198,7 +198,7 @@ P_final = sigmoid(logit(P_final)) × 100
 SatelliteValidationResult          GroundValidationResult
 ─────────────────────────    →    ──────────────────────────────
 final_confidence (0-100)           verdict (TRUE_FIRE/…)
-verdict (初步, 70/50)              final_confidence (0-100)
+verdict (初步, 75/50)              final_confidence (0-100)
 landcover / environmental          firms: FirmsResult
 false_positive                     industrial: IndustrialResult
 confidence_breakdown               confidence_breakdown

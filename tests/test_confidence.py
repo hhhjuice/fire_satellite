@@ -17,8 +17,8 @@ def test_compute_confidence_defaults_to_baseline_uncertain() -> None:
 
 def test_compute_confidence_grassland_increases_confidence(grassland_result) -> None:
     confidence, _ = compute_confidence(landcover=grassland_result)
-    assert confidence > 70.0
-    assert determine_verdict(confidence) in {Verdict.TRUE_FIRE, Verdict.UNCERTAIN}
+    assert confidence >= 75.0
+    assert determine_verdict(confidence) == Verdict.TRUE_FIRE
 
 
 def test_compute_confidence_water_strongly_decreases_confidence(water_result) -> None:
@@ -67,13 +67,14 @@ def test_initial_confidence_override() -> None:
 @pytest.mark.parametrize(
     ("confidence", "expected"),
     [
-        (70.0, Verdict.TRUE_FIRE),
+        (75.0, Verdict.TRUE_FIRE),
         (90.0, Verdict.TRUE_FIRE),
         (49.9, Verdict.FALSE_POSITIVE),
         (20.0, Verdict.FALSE_POSITIVE),
         (50.0, Verdict.UNCERTAIN),
         (60.0, Verdict.UNCERTAIN),
-        (69.9, Verdict.UNCERTAIN),
+        (70.0, Verdict.UNCERTAIN),
+        (74.9, Verdict.UNCERTAIN),
     ],
 )
 def test_determine_verdict_thresholds(confidence: float, expected: Verdict) -> None:

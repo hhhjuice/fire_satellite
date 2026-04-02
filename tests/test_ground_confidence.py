@@ -82,8 +82,8 @@ def test_determine_final_verdict_thresholds(confidence: float, expected: Verdict
     assert determine_final_verdict(confidence) == expected
 
 
-def test_final_verdict_true_fire_requires_75_not_70() -> None:
-    """Ground stage threshold is 75, stricter than satellite-only 70."""
+def test_final_verdict_true_fire_requires_75() -> None:
+    """Both satellite and ground stages use 75 as TRUE_FIRE threshold."""
     assert determine_final_verdict(70.0) == Verdict.UNCERTAIN
     assert determine_final_verdict(75.0) == Verdict.TRUE_FIRE
 

@@ -245,7 +245,7 @@ cp .env.example .env
 ```ini
 # ── 判定阈值 ──────────────────────────────────────────────
 # 最终置信度 >= 此值 → TRUE_FIRE
-SAT_THRESHOLD_TRUE_FIRE=70.0
+SAT_THRESHOLD_TRUE_FIRE=75.0
 
 # 最终置信度 < 此值 → FALSE_POSITIVE
 SAT_THRESHOLD_FALSE_POSITIVE=50.0
@@ -279,7 +279,7 @@ SAT_PIXEL_RESOLUTION_M=50.0
 
 1. 代码中的默认值
 2. `.env` 文件
-3. 系统环境变量（`export SAT_THRESHOLD_TRUE_FIRE=70.0`）
+3. 系统环境变量（`export SAT_THRESHOLD_TRUE_FIRE=75.0`）
 
 ---
 
@@ -533,9 +533,9 @@ confidence = sigmoid(logit_score) × 100
 ### 判定阈值
 
 ```
-confidence >= 70  →  TRUE_FIRE      （真实火点）
+confidence >= 75  →  TRUE_FIRE      （真实火点）
 confidence <  50  →  FALSE_POSITIVE  （假阳性）
-50 <= confidence < 70  →  UNCERTAIN  （待确认）
+50 <= confidence < 75  →  UNCERTAIN  （待确认）
 ```
 
 ---

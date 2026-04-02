@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Confidence thresholds (external scale 0-100)
-    threshold_true_fire: float = 70.0
+    threshold_true_fire: float = 75.0
     threshold_false_positive: float = 50.0
     initial_confidence: float = 0.5  # internal P₀ default [0,1]
 

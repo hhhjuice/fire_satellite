@@ -99,8 +99,8 @@ def compute_ground_confidence(
 def determine_final_verdict(confidence: float) -> Verdict:
     """Determine final verdict using ground-stage thresholds (75/50).
 
-    Stricter than satellite-only thresholds (70/50): the combined
-    satellite+ground evidence justifies a higher bar for TRUE_FIRE.
+    Same thresholds as satellite stage (75/50): both stages require
+    consistent confidence before declaring TRUE_FIRE.
     """
     settings = get_settings()
     return _verdict_from_thresholds(
