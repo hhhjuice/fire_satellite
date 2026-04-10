@@ -72,7 +72,7 @@ cp .env.example .env
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-> 详细部署步骤（GDAL 安装、systemd 配置、批量数据下载、故障排查等）参见 [DEPLOYMENT.md](DEPLOYMENT.md)。
+> 详细部署步骤（GDAL 安装、systemd 配置、批量数据下载、故障排查等）参见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
 
 ## GIS 数据准备
 

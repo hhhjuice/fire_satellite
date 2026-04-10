@@ -271,6 +271,19 @@ SAT_WORLDCOVER_DIR=data/worldcover
 # ── 相机参数 ───────────────────────────────────────────────
 # 像元分辨率（米/像素），用于由 fire_pixel 计算火点面积
 SAT_PIXEL_RESOLUTION_M=50.0
+
+# ── 与地面阶段共享的兼容配置（当前 /api/validate 不直接使用） ──
+# 这些参数保留在同一份 Settings 中，用于与地面增强阶段共享契约/数学定义
+SAT_THRESHOLD_TRUE_FIRE_FINAL=75.0
+SAT_THRESHOLD_FALSE_POSITIVE_FINAL=50.0
+SAT_FIRMS_LR_EXACT_MATCH=4.0
+SAT_FIRMS_LR_NEARBY=2.5
+SAT_FIRMS_LR_REGIONAL=1.5
+SAT_FIRMS_LR_NO_HISTORY=0.5
+SAT_INDUSTRIAL_DELTA_WITHIN_500M=-2.5
+SAT_INDUSTRIAL_DELTA_WITHIN_2KM=-1.5
+SAT_INDUSTRIAL_DELTA_WITHIN_5KM=-0.8
+SAT_INDUSTRIAL_DELTA_NONE=0.3
 ```
 
 ### 5.3 环境变量优先级
@@ -329,14 +342,51 @@ sudo systemctl start fire-satellite
 sudo systemctl status fire-satellite
 ```
 
-### 6.4 验证启动成功
+### 6.4 容器运行时镜像（仓库自带）
+
+仓库还提供了运行时镜像定义：`docker/Dockerfile.runtime` + `docker/start.sh`。
+
+特点：
+
+- 镜像只安装运行依赖，不内置项目代码
+- 默认要求将项目目录挂载到 `/workspace/fire_satellite`
+- 默认启动命令为单进程 `uvicorn app.main:app --host $HOST --port $PORT`
+- 若 `data/worldcover/` 缺失，只会打印警告；可通过 `SAT_WORLDCOVER_DIR` 指向外部挂载数据目录
+
+构建示例：
+
+```bash
+docker build \
+  -f docker/Dockerfile.runtime \
+  --build-arg BASE_IMAGE=python:3.11-slim \
+  -t fire-satellite-runtime .
+```
+
+运行示例：
+
+```bash
+docker run --rm -p 8000:8000 \
+  -v "$(pwd)":/workspace/fire_satellite \
+  -e HOST=0.0.0.0 \
+  -e PORT=8000 \
+  fire-satellite-runtime
+```
+
+可选覆盖环境变量：
+
+- `CODE_DIR`：代码目录（默认 `/workspace/fire_satellite`）
+- `APP_MODULE`：ASGI 入口（默认 `app.main:app`）
+- `HOST`：监听地址（默认 `0.0.0.0`）
+- `PORT`：监听端口（默认 `8000`）
+
+### 6.5 验证启动成功
 
 ```bash
 curl http://localhost:8000/api/health
 # 期望输出：{"status":"ok","version":"1.0.0"}
 ```
 
-启动日志应包含：
+启动日志示例（不同 uvicorn 版本格式可能略有差异）：
 
 ```
 INFO     app.main: Starting Satellite Fire Validation System...
@@ -376,6 +426,8 @@ curl -X POST http://localhost:8000/api/validate \
   -d '{"points": [{"latitude": 30.114329, "longitude": 120.017562}]}'
 ```
 
+> 说明：若省略 `confidence`，系统使用 `SAT_INITIAL_CONFIDENCE` 作为先验；若省略 `acquisition_time`，系统使用服务端当前 UTC 时间，因此环境因素相关结果会随时间变化。
+
 **批量验证（多火点并发处理）：**
 
 ```bash
@@ -396,8 +448,8 @@ curl -X POST http://localhost:8000/api/validate \
 | -------------------- | ------ | ---- | ------------ | ---------------------------------------- |
 | `latitude`         | float  | ✅   | -90 ~ 90     | 纬度，正北为正                           |
 | `longitude`        | float  | ✅   | -180 ~ 180   | 经度，正东为正                           |
-| `confidence`       | float  | 否   | 0 ~ 100      | 传感器原始置信度，作为初始先验 P₀       |
-| `acquisition_time` | string | 否   | ISO 8601 UTC | 观测时间，影响日夜状态和太阳角计算       |
+| `confidence`       | float  | 否   | 0 ~ 100      | 传感器原始置信度。若提供，则按 `confidence / 100` 作为初始先验 P₀；若未提供，则使用 `SAT_INITIAL_CONFIDENCE`（默认 0.5） |
+| `acquisition_time` | string | 否   | ISO 8601 UTC | 观测时间，影响日夜状态和太阳角计算；若未提供，则服务端使用当前 UTC 时间 |
 | `fire_pixel`       | int    | 否   | ≥ 1         | 火点像素大小（像素数），用于计算火点面积 |
 
 **响应字段说明：**
@@ -615,7 +667,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001
 服务日志输出到 stdout，格式为：
 
 ```
-2026-03-11 06:00:01,234 INFO app.services.landcover: 读取地物编码成功 (28.5, 116.3): 30
+2026-03-11 06:00:01,234 INFO app.main: Starting Satellite Fire Validation System...
+2026-03-11 06:00:01,235 INFO app.main: System ready.
 2026-03-11 06:00:01,256 WARNING app.services.landcover: WorldCover tile not found: data/worldcover/ESA_...tif
 ```
 
@@ -630,7 +683,7 @@ uvicorn app.main:app ... 2>&1 | tee -a /var/log/fire-satellite.log
 ```bash
 cd fire_satellite
 python -m pytest tests/ -v
-# 期望：44 passed
+# 期望：45 passed
 ```
 
 ### 性能基准
