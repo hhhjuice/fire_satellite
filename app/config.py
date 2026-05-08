@@ -58,9 +58,13 @@ class Settings(BaseSettings):
     # Data directories (local GeoTIFF)
     data_dir: Path = Path("data")
     worldcover_dir: Path = Path("data/worldcover")
+    worldcover_manifest_path: Path = Path("data/worldcover_manifest.json")
 
     # Camera pixel resolution (meters per pixel, for fire area calculation)
     pixel_resolution_m: float = 50.0
+
+    # API limits
+    max_batch_points: int = 100
 
     # Coordinate correction
     correction_radius_m: float = 500.0

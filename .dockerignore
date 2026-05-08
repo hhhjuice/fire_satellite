@@ -1,4 +1,8 @@
 *
 !requirements.txt
+!app/
+!app/**
+!data/
+!data/worldcover_manifest.json
 !docker/
 !docker/**

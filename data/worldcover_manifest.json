@@ -1,0 +1,12 @@
+{
+  "dataset": "ESA WorldCover 10m 2021 v200",
+  "coverage": "Limited deployment tiles for Iran and Myanmar test regions",
+  "tiles": [
+    "N18E096",
+    "N27E117",
+    "N27E120",
+    "N30E117",
+    "N30E120",
+    "N33E051"
+  ]
+}

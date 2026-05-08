@@ -41,10 +41,10 @@ Ruff 配置：Python 3.11，行长 120，规则 E/F/W/I（忽略 E501）。
 
 第二阶段（并行，在第一阶段之后）：
   app/services/false_positive.py     → 4 个检测器：水体、城市、太阳耀光、海岸
-  app/core/coordinator.py            → 螺旋搜索可燃地表（最多 50 步）
+  app/core/coordinator.py            → 螺旋搜索可燃地表
 
 第三阶段（融合）：
-  app/core/confidence.py             → 贝叶斯 logit 融合 → 判决结果
+  app/core/confidence.py             → 贝叶斯 logit 融合 → 判决结果；若坐标修正成功则用修正后坐标重算
   app/utils/reason_generator.py      → 生成中文原因说明 + 摘要
 ```
 
@@ -59,7 +59,7 @@ logit(Pₛ) = logit(P₀) + ln(LR_landcover) + β_env·env_score − total_fp_pe
 Pₛ = sigmoid(logit_score) × 100
 ```
 
-- 传感器输入置信度范围 **[50, 75]**，转换为 `P₀ = confidence / 100.0`。
+- 传感器输入置信度范围 **[0, 100]**，转换为 `P₀ = confidence / 100.0`；缺省时使用 `SAT_INITIAL_CONFIDENCE`。
 - 初步判决（`app/core/confidence.py`）：`≥ 75 → TRUE_FIRE`，`< 50 → FALSE_POSITIVE`，否则 `UNCERTAIN`。
 
 ### Stage 2 — 地面验证（地面系统使用）
@@ -69,7 +69,7 @@ logit(P_final) = logit(Pₛ/100) + ln(LR_firms) + Δ_industrial
 P_final = sigmoid(logit(P_final)) × 100
 ```
 
-- 计算逻辑在 `app/core/ground_confidence.py`（仅数学计算，无数据获取），数据获取由地面系统负责。
+- 当前地面增强实现位于 `../fire_ground/app/core/confidence.py`；本项目内的 `app/core/ground_confidence.py` 仅保留数学参考，不负责网络数据获取。
 - 最终判决阈值（`determine_final_verdict`）：`≥ 75 → TRUE_FIRE`，`< 50 → FALSE_POSITIVE`，否则 `UNCERTAIN`。
 - 最终置信度范围：真实火点 **[75, 100]**，不确定 **[50, 75)**，假阳性 **< 50**。
 
@@ -79,6 +79,7 @@ P_final = sigmoid(logit(P_final)) × 100
 
 - ESA WorldCover 分类代码、似然比（`landcover_lr`）、可燃地表代码均定义于 `app/config.py`。
 - GeoTIFF 瓦片为 3°×3° 网格，命名：`ESA_WorldCover_10m_2021_v200_{grid_code}_Map.tif`，放置于 `data/worldcover/`。
+- `data/worldcover_manifest.json` 定义当前伊朗/缅甸部署所需瓦片；`/api/health/ready` 会检查 manifest、瓦片存在性和样例瓦片可读性。
 - 缺失瓦片会被优雅处理——地表覆盖返回 `None`，计算以中性似然比继续。
 - 使用 `rasterio` 读取 GeoTIFF（`app/services/landcover.py`），瓦片路径解析在 `app/data/worldcover.py`。
 
@@ -89,6 +90,7 @@ P_final = sigmoid(logit(P_final)) × 100
 ## API 接口
 
 - `POST /api/validate` — 接受 `ValidateRequest`（`FirePointInput` 列表），返回包含每点 `SatelliteValidationResult` 及批量统计的 `ValidateResponse`。`FirePointInput` 含可选字段 `fire_pixel`（像素数，≥1）；`SatelliteValidationResult` 含 `fire_area_m2`（火点估算面积 m²，公式：`fire_pixel × pixel_resolution_m²`，未传入时为 `null`）。
-- `GET /api/health` — 返回服务状态和版本信息。
+- `GET /api/health` — 返回轻量服务状态和版本信息。
+- `GET /api/health/ready` — 检查 WorldCover 数据依赖，缺瓦片/不可读时返回 503。
 
 所有原因说明和摘要均以中文生成（`app/utils/reason_generator.py`）。

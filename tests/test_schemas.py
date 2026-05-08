@@ -8,6 +8,7 @@ from app.api.schemas import (
     ValidateRequest,
     Verdict,
 )
+from app.config import get_settings
 
 
 def test_fire_point_input_accepts_valid_coordinates() -> None:
@@ -24,6 +25,14 @@ def test_fire_point_input_rejects_invalid_latitude() -> None:
 def test_validate_request_requires_at_least_one_point() -> None:
     with pytest.raises(ValidationError):
         ValidateRequest(points=[])
+
+
+def test_validate_request_rejects_over_limit() -> None:
+    point = FirePointInput(latitude=0.0, longitude=0.0)
+    points = [point] * (get_settings().max_batch_points + 1)
+
+    with pytest.raises(ValidationError):
+        ValidateRequest(points=points)
 
 
 def test_verdict_enum_values() -> None:

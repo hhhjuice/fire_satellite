@@ -67,10 +67,7 @@ async def correct_coordinates(
     best_lc_name = "未知"
     found = False
 
-    max_samples = 50
-    sample_offsets = offsets[:max_samples]
-
-    for dlat, dlon in sample_offsets:
+    for dlat, dlon in offsets:
         candidate_lat = lat + dlat
         candidate_lon = lon + dlon
 

@@ -30,7 +30,7 @@ def _read_pixel(file_path: str, lat: float, lon: float) -> Optional[int]:
             return int(data[0, 0])
     except (RasterioIOError, IndexError, Exception) as exc:
         logger.warning(
-            "Failed to read land cover at (%.4f, %.4f) from %s: %s",
+            "Failed to read land cover near lat=%.2f lon=%.2f from %s: %s",
             lat, lon, file_path, exc,
         )
         return None
@@ -41,7 +41,7 @@ async def get_landcover(lat: float, lon: float) -> Optional[LandCoverResult]:
     settings = get_settings()
     tile_path = get_tile_path(lat, lon)
 
-    if not tile_path.exists():
+    if not await asyncio.to_thread(tile_path.exists):
         logger.warning("WorldCover tile not found: %s", tile_path)
         return None
 

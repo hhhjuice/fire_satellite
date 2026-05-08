@@ -6,9 +6,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from app.config import get_settings
 
 
 class Verdict(str, Enum):
@@ -34,6 +36,13 @@ class FirePointInput(BaseModel):
 class ValidateRequest(BaseModel):
     """Request to validate one or more fire points. No TIF fields."""
     points: list[FirePointInput] = Field(..., min_length=1, description="火点列表")
+
+    @model_validator(mode="after")
+    def validate_batch_size(self) -> "ValidateRequest":
+        max_points = get_settings().max_batch_points
+        if len(self.points) > max_points:
+            raise ValueError(f"火点数量不能超过 {max_points}")
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +101,18 @@ class ConfidenceBreakdown(BaseModel):
     final_confidence: float = Field(0.0, ge=0, le=100, description="最终置信度 (0-100)")
 
 
+class SatelliteAnalysisSnapshot(BaseModel):
+    """Diagnostic snapshot for analysis at one coordinate."""
+    latitude: float = Field(..., ge=-90, le=90, description="分析纬度")
+    longitude: float = Field(..., ge=-180, le=180, description="分析经度")
+    verdict: Verdict = Field(..., description="该坐标下的判定结果")
+    final_confidence: float = Field(..., ge=0, le=100, description="该坐标下的最终置信度 (0-100)")
+    landcover: Optional[LandCoverResult] = Field(None, description="该坐标下的地物分析结果")
+    false_positive: Optional[FalsePositiveResult] = Field(None, description="该坐标下的假阳性检测结果")
+    environmental: Optional[EnvironmentalResult] = Field(None, description="该坐标下的环境因素分析")
+    confidence_breakdown: Optional[ConfidenceBreakdown] = Field(None, description="该坐标下的置信度分解")
+
+
 # ---------------------------------------------------------------------------
 # Output (this is what gets downlinked to the ground system)
 # ---------------------------------------------------------------------------
@@ -115,6 +136,10 @@ class SatelliteValidationResult(BaseModel):
     false_positive: Optional[FalsePositiveResult] = Field(None, description="假阳性检测结果")
     environmental: Optional[EnvironmentalResult] = Field(None, description="环境因素分析")
     confidence_breakdown: Optional[ConfidenceBreakdown] = Field(None, description="置信度分解")
+    original_analysis: Optional[SatelliteAnalysisSnapshot] = Field(
+        None,
+        description="坐标修正前的原始位置分析快照；未修正时为空",
+    )
 
     processing_time_ms: float = Field(0.0, ge=0, description="处理耗时 (毫秒)")
 
@@ -133,6 +158,8 @@ class HealthResponse(BaseModel):
     """Health check response."""
     status: str = Field("ok", description="服务状态")
     version: str = Field("1.0.0", description="版本号")
+    services: dict[str, bool] = Field(default_factory=dict, description="各服务可用性")
+    details: dict[str, Any] = Field(default_factory=dict, description="健康检查细节")
 
 
 # ---------------------------------------------------------------------------

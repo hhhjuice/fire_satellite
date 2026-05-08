@@ -129,14 +129,12 @@ ESA_WorldCover_10m_2021_v200_{grid_code}_Map.tif
 
 `grid_code` 由系统自动计算，规则为：纬度向下取整到 3 的倍数，经度向下取整到 3 的倍数。
 
-| 坐标示例                   | 对应瓦片 grid_code |
-| -------------------------- | ------------------ |
-| 28.5°N, 116.3°E          | `N27E114`        |
-| 39.9°N, 116.4°E（北京）  | `N39E114`        |
-| 31.2°N, 121.5°E（上海）  | `N30E120`        |
-| 22.5°N, 114.1°E（深圳）  | `N21E114`        |
-| 1.3°N, 103.8°E（新加坡） | `N00E102`        |
-| 35.6°N, 139.7°E（东京）  | `N33E138`        |
+| 坐标示例                         | 对应瓦片 grid_code |
+| -------------------------------- | ------------------ |
+| 20.278179°N, 97.026738°E（缅甸） | `N18E096`          |
+| 35.785168°N, 51.476602°E（伊朗） | `N33E051`          |
+| 28.5°N, 117.3°E                  | `N27E117`          |
+| 31.2°N, 121.5°E                  | `N30E120`          |
 
 ### 4.3 计算任意坐标对应的瓦片名
 
@@ -151,8 +149,8 @@ def get_tile_name(lat, lon):
     code = f"{lat_p}{abs(tile_lat):02d}{lon_p}{abs(tile_lon):03d}"
     return f"ESA_WorldCover_10m_2021_v200_{code}_Map.tif"
 
-print(get_tile_name(28.5, 116.3))
-# ESA_WorldCover_10m_2021_v200_N27E114_Map.tif
+print(get_tile_name(20.278179, 97.026738))
+# ESA_WorldCover_10m_2021_v200_N18E096_Map.tif
 ```
 
 ### 4.4 下载方式
@@ -164,8 +162,8 @@ print(get_tile_name(28.5, 116.3))
 **方式二：直接拼接 URL 下载**
 
 ```bash
-# 示例：下载 N27E114 瓦片
-GRID_CODE="N27E114"
+# 示例：下载缅甸测试区域 N18E096 瓦片
+GRID_CODE="N18E096"
 wget "https://esa-worldcover.s3.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_${GRID_CODE}_Map.tif"
 ```
 
@@ -173,15 +171,12 @@ wget "https://esa-worldcover.s3.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2
 
 ```bash
 #!/bin/bash
-# 下载中国区域常用瓦片（根据实际需求修改）
+# 当前部署清单覆盖伊朗与缅甸测试区域（根据实际需求修改）
 CODES=(
-  "N21E108" "N21E111" "N21E114" "N21E117" "N21E120"
-  "N24E108" "N24E111" "N24E114" "N24E117" "N24E120"
-  "N27E108" "N27E111" "N27E114" "N27E117" "N27E120"
-  "N30E108" "N30E111" "N30E114" "N30E117" "N30E120"
-  "N33E108" "N33E111" "N33E114" "N33E117" "N33E120"
-  "N36E108" "N36E111" "N36E114" "N36E117" "N36E120"
-  "N39E108" "N39E111" "N39E114" "N39E117" "N39E120"
+  "N18E096"
+  "N27E117" "N27E120"
+  "N30E117" "N30E120"
+  "N33E051"
 )
 
 mkdir -p data/worldcover
@@ -204,12 +199,15 @@ echo "下载完成"
 fire_satellite/
 └── data/
     └── worldcover/
-        ├── ESA_WorldCover_10m_2021_v200_N27E114_Map.tif
+        ├── ESA_WorldCover_10m_2021_v200_N18E096_Map.tif
         ├── ESA_WorldCover_10m_2021_v200_N27E117_Map.tif
-        └── ...
+        ├── ESA_WorldCover_10m_2021_v200_N27E120_Map.tif
+        ├── ESA_WorldCover_10m_2021_v200_N30E117_Map.tif
+        ├── ESA_WorldCover_10m_2021_v200_N30E120_Map.tif
+        └── ESA_WorldCover_10m_2021_v200_N33E051_Map.tif
 ```
 
-> **目录路径可通过环境变量 `SAT_WORLDCOVER_DIR` 自定义**，默认为项目根目录下的 `data/worldcover`。
+> **目录路径可通过环境变量 `SAT_WORLDCOVER_DIR` 自定义**，默认为项目根目录下的 `data/worldcover`。`data/worldcover_manifest.json` 是当前伊朗/缅甸有限部署清单，`/api/health/ready` 会按该清单检查瓦片存在性和样例瓦片可读性。
 
 ### 4.6 验证数据文件
 
@@ -268,9 +266,16 @@ SAT_CORRECTION_STEP_M=50.0
 # WorldCover GeoTIFF 存储目录（绝对路径或相对于项目根目录的路径）
 SAT_WORLDCOVER_DIR=data/worldcover
 
+# WorldCover 部署清单，列出当前实例要求存在的瓦片代码
+SAT_WORLDCOVER_MANIFEST_PATH=data/worldcover_manifest.json
+
 # ── 相机参数 ───────────────────────────────────────────────
 # 像元分辨率（米/像素），用于由 fire_pixel 计算火点面积
 SAT_PIXEL_RESOLUTION_M=50.0
+
+# ── API 限制 ───────────────────────────────────────────────
+# 单次 /api/validate 最大火点数
+SAT_MAX_BATCH_POINTS=100
 
 # ── 与地面阶段共享的兼容配置（当前 /api/validate 不直接使用） ──
 # 这些参数保留在同一份 Settings 中，用于与地面增强阶段共享契约/数学定义
@@ -348,10 +353,10 @@ sudo systemctl status fire-satellite
 
 特点：
 
-- 镜像只安装运行依赖，不内置项目代码
-- 默认要求将项目目录挂载到 `/workspace/fire_satellite`
-- 默认启动命令为单进程 `uvicorn app.main:app --host $HOST --port $PORT`
-- 若 `data/worldcover/` 缺失，只会打印警告；可通过 `SAT_WORLDCOVER_DIR` 指向外部挂载数据目录
+- 镜像内置 `app/` 代码和 `data/worldcover_manifest.json`，不再要求挂载源码目录
+- GeoTIFF 数据通过 `/data/worldcover` 数据卷挂载，默认 `SAT_WORLDCOVER_DIR=/data/worldcover`
+- 默认启动命令为单进程 `python3 -m uvicorn app.main:app --host $HOST --port $PORT`
+- 镜像内置 `HEALTHCHECK`，调用 `/api/health/ready` 验证 WorldCover 数据就绪
 
 构建示例：
 
@@ -366,7 +371,7 @@ docker build \
 
 ```bash
 docker run --rm -p 8000:8000 \
-  -v "$(pwd)":/workspace/fire_satellite \
+  -v /opt/fire_satellite/worldcover:/data/worldcover:ro \
   -e HOST=0.0.0.0 \
   -e PORT=8000 \
   fire-satellite-runtime
@@ -374,16 +379,20 @@ docker run --rm -p 8000:8000 \
 
 可选覆盖环境变量：
 
-- `CODE_DIR`：代码目录（默认 `/workspace/fire_satellite`）
+- `CODE_DIR`：代码目录（默认 `/app`，通常无需覆盖）
 - `APP_MODULE`：ASGI 入口（默认 `app.main:app`）
 - `HOST`：监听地址（默认 `0.0.0.0`）
 - `PORT`：监听端口（默认 `8000`）
+- `SAT_REQUIRE_WORLDCOVER=true`：启动时若 `/data/worldcover` 不存在则直接退出
 
 ### 6.5 验证启动成功
 
 ```bash
 curl http://localhost:8000/api/health
-# 期望输出：{"status":"ok","version":"1.0.0"}
+# 期望输出：{"status":"ok","version":"1.0.0","services":{"pipeline":true},"details":{}}
+
+curl http://localhost:8000/api/health/ready
+# 期望输出：status=ok 且 services.worldcover=true；缺瓦片时返回 503/degraded
 ```
 
 启动日志示例（不同 uvicorn 版本格式可能略有差异）：
@@ -683,7 +692,7 @@ uvicorn app.main:app ... 2>&1 | tee -a /var/log/fire-satellite.log
 ```bash
 cd fire_satellite
 python -m pytest tests/ -v
-# 期望：45 passed
+# 期望：52 passed
 ```
 
 ### 性能基准
@@ -694,4 +703,4 @@ python -m pytest tests/ -v
 | 有 WorldCover 数据（含磁盘 I/O） | 20–100 ms   |
 | 含坐标修正（螺旋搜索）           | 50–500 ms   |
 
-> 坐标修正最多采样 50 个候选点，每个点做一次 GeoTIFF 读取，是主要耗时来源。可通过增大 `SAT_CORRECTION_STEP_M`（步长）减少采样次数来降低延迟。
+> 坐标修正会按 `SAT_CORRECTION_RADIUS_M` 与 `SAT_CORRECTION_STEP_M` 覆盖搜索半径内的候选点，每个候选点会做一次 GeoTIFF 读取，是主要耗时来源。可通过增大 `SAT_CORRECTION_STEP_M`（步长）减少采样次数来降低延迟。

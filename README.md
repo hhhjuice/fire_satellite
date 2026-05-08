@@ -7,7 +7,7 @@
 - **完全离线** — 无任何网络请求，GIS 数据本地存储
 - **轻量级** — 无前端、无数据库、无缓存层
 - **4 种假阳性检测** — 水体、城市热岛、太阳耀斑、海岸反射
-- **螺旋搜索坐标修正** — 自动修正火点坐标到最近可燃区域
+- **螺旋搜索坐标修正** — 自动修正火点坐标到最近可燃区域，并基于修正后坐标重算最终判定
 - **Headless API** — 纯 JSON API，适合星地链路对接
 
 ## 系统架构
@@ -35,6 +35,8 @@
             +-- 判定 (TRUE_FIRE / FALSE_POSITIVE / UNCERTAIN)
             +-- 中文原因生成
 ```
+
+若坐标修正被应用，最终 `landcover`、`false_positive`、`environmental`、`confidence_breakdown`、`verdict` 和 `final_confidence` 均来自修正后坐标；修正前分析保存在 `original_analysis` 便于诊断。
 
 ## 置信度算法
 
@@ -76,13 +78,16 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ## GIS 数据准备
 
-将 ESA WorldCover 2021 v200 GeoTIFF 瓦片放入 `data/worldcover/` 目录：
+将 ESA WorldCover 2021 v200 GeoTIFF 瓦片放入 `data/worldcover/` 目录。当前项目自带的 `data/worldcover_manifest.json` 面向伊朗与缅甸测试区域，要求以下 6 个瓦片：
 
 ```
 data/worldcover/
-  ESA_WorldCover_10m_2021_v200_N27E114_Map.tif
-  ESA_WorldCover_10m_2021_v200_N27E115_Map.tif
-  ...
+  ESA_WorldCover_10m_2021_v200_N18E096_Map.tif
+  ESA_WorldCover_10m_2021_v200_N27E117_Map.tif
+  ESA_WorldCover_10m_2021_v200_N27E120_Map.tif
+  ESA_WorldCover_10m_2021_v200_N30E117_Map.tif
+  ESA_WorldCover_10m_2021_v200_N30E120_Map.tif
+  ESA_WorldCover_10m_2021_v200_N33E051_Map.tif
 ```
 
 文件命名格式：`ESA_WorldCover_10m_2021_v200_{grid_code}_Map.tif`
@@ -137,6 +142,13 @@ data/worldcover/
         "false_positive_penalty": 0.0,
         "final_confidence": 82.0
       },
+      "original_analysis": {
+        "latitude": 28.5,
+        "longitude": 116.3,
+        "verdict": "FALSE_POSITIVE",
+        "final_confidence": 8.4,
+        "landcover": { "class_code": 80, "class_name": "水体", "likelihood_ratio": 0.01 }
+      },
       "processing_time_ms": 45.2
     }
   ],
@@ -151,8 +163,12 @@ data/worldcover/
 ### GET /api/health — 健康检查
 
 ```json
-{ "status": "ok", "version": "1.0.0" }
+{ "status": "ok", "version": "1.0.0", "services": { "pipeline": true }, "details": {} }
 ```
+
+### GET /api/health/ready — 就绪检查
+
+检查 `SAT_WORLDCOVER_DIR`、`SAT_WORLDCOVER_MANIFEST_PATH` 和样例 GeoTIFF 是否可读；数据未挂载或瓦片缺失时返回 503。
 
 ## 项目结构
 
@@ -162,7 +178,7 @@ fire_satellite/
     main.py                  # FastAPI 入口 (headless, 无前端)
     config.py                # 配置 (SAT_ 前缀环境变量)
     api/
-      routes.py              # POST /api/validate, GET /api/health
+      routes.py              # POST /api/validate, GET /api/health, GET /api/health/ready
       schemas.py             # Pydantic 数据模型
     core/
       confidence.py          # Bayesian Logit 置信度引擎
@@ -178,8 +194,9 @@ fire_satellite/
       geo.py                 # 地理计算 (haversine, bbox, 太阳角等)
       reason_generator.py    # 中文原因生成
   data/
+    worldcover_manifest.json # 当前部署所需 WorldCover 瓦片清单
     worldcover/              # ESA WorldCover GeoTIFF 瓦片 (用户手动放置)
-  tests/                     # 34 个单元测试
+  tests/                     # 52 个单元测试
   requirements.txt
   pyproject.toml
   .env.example
@@ -198,7 +215,9 @@ fire_satellite/
 | SAT_CORRECTION_RADIUS_M      | 坐标修正半径 (m)        | 500.0           |
 | SAT_CORRECTION_STEP_M        | 坐标修正步长 (m)        | 50.0            |
 | SAT_WORLDCOVER_DIR           | GeoTIFF 目录            | data/worldcover |
+| SAT_WORLDCOVER_MANIFEST_PATH | GeoTIFF 瓦片清单        | data/worldcover_manifest.json |
 | SAT_PIXEL_RESOLUTION_M       | 相机像元分辨率 (m/像素) | 50.0            |
+| SAT_MAX_BATCH_POINTS         | 单次验证最大火点数      | 100             |
 
 ## 测试
 
@@ -206,7 +225,7 @@ fire_satellite/
 python -m pytest tests/ -v
 ```
 
-44 个测试覆盖：置信度引擎、地理计算、原因生成、数据模型验证。
+52 个测试覆盖：置信度引擎、坐标修正重算、WorldCover 就绪检查、地理计算、原因生成、数据模型验证。
 
 ## 与地面系统对接
 
